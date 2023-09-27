@@ -5,17 +5,10 @@ BASE_DIR="$(dirname "$0")"
 BASE_DIR="$(realpath "${BASE_DIR}/../")"
 cd "${BASE_DIR}"
 
-bash scripts/setup.sh
-
 MASTER_ADDR="${1:-"localhost"}"
 MASTER_PORT="${2:-12355}"
 NUM_NODES="${3:-1}"
 NUM_GPU="$(python3 -c "import torch; print(torch.cuda.device_count())")"
-
-DATASET_PATHS=(
-  ".data/databricks-dolly-15k.jsonl"
-  # add your datasets here
-)
 
 torchrun \
   --nnodes="${NUM_NODES}" \
@@ -23,9 +16,8 @@ torchrun \
   --rdzv-endpoint="${MASTER_ADDR}:${MASTER_PORT}" \
   run_train.py \
   --task "instruction" \
-  --model_name "EleutherAI/pythia-70m" \
-  --dataset_path "${DATASET_PATHS[@]}" \
-  --test_dataset_size 200 \
+  --model_name_or_path "EleutherAI/pythia-70m" \
+  --dataset_name "FedML/databricks-dolly-15k-niid" \
   --seed 1234 \
   --fp16 "False" \
   --bf16 "False" \

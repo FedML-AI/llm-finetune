@@ -33,12 +33,9 @@ MODEL_NAMES = [
 ]
 
 DATASET_NAMES = [
+    "FedML/PubMedQA_instruction",
+    "FedML/databricks-dolly-15k-niid",
     "databricks/databricks-dolly-15k",
-    "togethercomputer/RedPajama-Data-1T",
-    "togethercomputer/RedPajama-Data-1T-Sample",
-    "EleutherAI/pile",
-    # "EleutherAI/pile" is no longer available for some unknown reasons. The below datasets are backups.
-    "FedML/pile",
     "medalpaca/medical_meadow_mediqa",
     "bitext/Bitext-customer-support-llm-chatbot-training-dataset",
     "gbharti/wealth-alpaca_lora",

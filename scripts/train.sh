@@ -5,8 +5,6 @@ BASE_DIR="$(dirname "$0")"
 BASE_DIR="$(realpath "${BASE_DIR}/../")"
 cd "${BASE_DIR}"
 
-bash scripts/setup.sh
-
 NUM_GPU="$(python3 -c "import torch; print(torch.cuda.device_count())")"
 
 # see https://stackoverflow.com/a/13864829
@@ -16,15 +14,10 @@ if [[ -z "${CUDA_VISIBLE_DEVICES+x}" && "${NUM_GPU}" -gt 1 ]]; then
   export CUDA_VISIBLE_DEVICES="0"
 fi
 
-DATASET_PATHS=(
-  ".data/databricks-dolly-15k.jsonl"
-  # add your datasets here
-)
-
 python3 run_train.py \
+  --task "instruction" \
   --model_name_or_path "EleutherAI/pythia-70m" \
-  --dataset_path "${DATASET_PATHS[@]}" \
-  --test_dataset_size 200 \
+  --dataset_name "FedML/databricks-dolly-15k-niid" \
   --seed 1234 \
   --fp16 "False" \
   --bf16 "False" \

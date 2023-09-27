@@ -25,7 +25,7 @@ from src.hf_trainer import HFTrainer
 from src.modeling_utils import get_data_collator, get_max_seq_length as _get_max_seq_length, get_vocab_size
 from src.trainer_callback import SavePeftModelCallback
 from src.typing import ModelConfigType, ModelType, TokenizerType
-from src.utils import parse_hf_args, save_config, should_process_save
+from src.utils import parse_hf_args, save_config
 
 
 def preprocess_dataset(
@@ -260,7 +260,7 @@ def train() -> None:
     )
 
     if training_args.do_train:
-        if should_process_save(trainer):
+        if trainer.args.should_save:
             # save model config before training
             save_config(model, training_args.output_dir)
 

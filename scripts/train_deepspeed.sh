@@ -24,7 +24,7 @@ deepspeed \
   --master_port="${MASTER_PORT}" \
   run_train.py \
   --task "instruction" \
-  --deepspeed "configs/ds_z3_bf16_config.json" \
+  --deepspeed "configs/deepspeed/ds_z3_bf16_config.json" \
   --model_name "EleutherAI/pythia-70m" \
   --dataset_path "${DATASET_PATHS[@]}" \
   --test_dataset_size 200 \

@@ -2,8 +2,6 @@ from typing import (
     Any,
     Dict,
     Iterable,
-    List,
-    MutableMapping,
     Optional,
     Sequence,
     Tuple,
@@ -12,18 +10,16 @@ from typing import (
     Union,
 )
 
-import inspect
-import logging
 import os
 from pathlib import Path
 import shutil
 
 from fedml.arguments import Arguments
 import torch.cuda
-from torch import distributed as dist, Tensor
+from torch import distributed as dist
 from torch.nn import Module
-from transformers import HfArgumentParser, Trainer
-from transformers.deepspeed import is_deepspeed_available, is_deepspeed_zero3_enabled
+from transformers import HfArgumentParser
+from transformers.deepspeed import is_deepspeed_available
 from peft import PeftModel, PromptLearningConfig
 
 from .typing import ModelType, PathType

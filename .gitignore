@@ -34,8 +34,5 @@ __pycache__/
 /wandb
 
 # project files
-*_host_file
 /.data
 /.logs
-/cache
-devops/geo-distributed-cluster/*

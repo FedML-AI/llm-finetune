@@ -32,20 +32,14 @@ class FinetuningArguments(TrainingArguments):
 @dataclass
 class ModelArguments:
     model_name_or_path: str = field(default="EleutherAI/pythia-70m", metadata={"help": "model name or path."})
-    model_dtype: Optional[str] = field(
-        default=None,
-        metadata={
-            "help": "model dtype.",
-            "choices": MODEL_DTYPES,
-        },
-    )
-    use_lora: bool = field(default=False, metadata={"help": "Set to `True` to enable LoRA."})
+    model_dtype: Optional[str] = field(default=None, metadata={"help": "model dtype.", "choices": MODEL_DTYPES})
+    use_lora: bool = field(default=True, metadata={"help": "Whether to enable LoRA."})
     lora_r: int = field(default=8, metadata={"help": "LoRA attention dimension (rank)."})
-    lora_alpha: int = field(default=32, metadata={"help": "LoRA alpha."})
-    lora_dropout: float = field(default=0.1, metadata={"help": "LoRA dropout."})
+    lora_alpha: int = field(default=16, metadata={"help": "LoRA alpha."})
+    lora_dropout: float = field(default=0.05, metadata={"help": "LoRA dropout."})
     lora_on_all_modules: bool = field(
         default=False,
-        metadata={"help": "If `True`, apply LoRA on all supported layers and track gradient for all non-LoRA layers."}
+        metadata={"help": "Whether to apply LoRA on all supported layers and track gradient for all non-LoRA layers."}
     )
     lora_target_modules: Optional[List[str]] = field(
         default=None,
@@ -53,15 +47,15 @@ class ModelArguments:
             "help": "List of module names or regex expression of the module names to replace with Lora."
                     "For example, ['q', 'v'] or '.*decoder.*(SelfAttention|EncDecAttention).*(q|v)$' ",
             "nargs": "+",
-        },
+        }
     )
     auth_token: Optional[str] = field(
         default=None,
         metadata={
             "help": "Authentication token for Hugging Face private models such as Llama 2.",
-        },
+        }
     )
-    load_pretrained: bool = field(default=True, metadata={"help": "If `True`, load pretrained model."})
+    load_pretrained: bool = field(default=True, metadata={"help": "Whether to load pretrained model."})
 
     def __post_init__(self) -> None:
         if is_file(self.model_name_or_path):
@@ -114,21 +108,36 @@ class ModelArguments:
 
 @dataclass
 class DatasetArguments:
-    dataset_name: Optional[str] = field(default=None, metadata={"help": "dataset name", "choices": DATASET_NAMES})
+    dataset_name: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Hugging Face dataset name. This overrides `dataset_path`.",
+            "choices": ["none"] + DATASET_NAMES,
+        }
+    )
     dataset_path: List[str] = field(
         default_factory=list,
-        metadata={"help": "Path to the training data file(s).", "nargs": "+"}
+        metadata={
+            "help": "Path to dataset file(s). If contains multiple entries, the first entry is considered"
+                    " the training split and the second entry is the test split.",
+            "nargs": "+",
+        }
     )
     dataset_config_name: Optional[str] = field(default=None, metadata={"help": "dataset configuration name"})
     dataset_streaming: bool = field(
         default=False,
-        metadata={"help": "If `True`, streams the data progressively while iterating on the dataset."}
+        metadata={"help": "Whether to stream the data progressively while iterating on the dataset."}
     )
     test_dataset_size: int = field(
         default=-1,
-        metadata={"help": "test set size. Will be ignored if `dataset_path` has more than 1 entry."}
+        metadata={
+            "help": "The test dataset size. Will be ignored if `dataset_name` contains multiple splits or if"
+                    " `dataset_path` has more than 1 entry."
+        }
     )
-    max_seq_length: Optional[int] = field(default=None, metadata={"help": "max sequence length."})
+    max_seq_length: Optional[int] = field(
+        default=None,
+        metadata={"help": "The max sequence length. If unspecified, will use the context length of the model."})
     truncate_long_seq: bool = field(
         default=True,
         metadata={"help": "Whether to truncate long sequences whose length > max_seq_length."}
@@ -139,13 +148,13 @@ class DatasetArguments:
     )
     prompt_style: str = field(
         default="dolly",
-        metadata={
-            "help": "Prompt template style.",
-            "choices": PROMPT_STYLES,
-        }
+        metadata={"help": "Prompt template style.", "choices": PROMPT_STYLES}
     )
 
     def __post_init__(self) -> None:
+        if self.dataset_name == "none":
+            self.dataset_name = None
+
         if self.dataset_name is not None:
             self.dataset_path = []
 

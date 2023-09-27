@@ -1,0 +1,12 @@
+workspace: .
+job: |
+  bash scripts/train.sh
+  echo "job finished."
+bootstrap: |
+  bash configs/bootstrap.sh
+  echo "Bootstrap finished."
+task_type: train
+computing:
+  resource_type: A100-80G
+  minimum_num_gpus: 1
+  maximum_cost_per_hour: $3

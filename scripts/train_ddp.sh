@@ -15,22 +15,24 @@ torchrun \
   --nproc_per_node="${NUM_GPU}" \
   --rdzv-endpoint="${MASTER_ADDR}:${MASTER_PORT}" \
   run_train.py \
+  --ddp_find_unused_parameters "False" \
   --task "instruction" \
   --model_name_or_path "EleutherAI/pythia-70m" \
   --dataset_name "FedML/databricks-dolly-15k-niid" \
   --seed 1234 \
   --fp16 "False" \
   --bf16 "False" \
-  --use_lora \
+  --use_lora "True" \
   --gradient_checkpointing "True" \
-  --ddp_find_unused_parameters "False" \
-  --per_device_train_batch_size 6 \
-  --per_device_eval_batch_size 6 \
-  --learning_rate "5e-6" \
+  --per_device_train_batch_size 8 \
+  --per_device_eval_batch_size 8 \
+  --optim "adamw_torch" \
+  --lr_scheduler_type "cosine" \
+  --learning_rate "3e-4" \
   --warmup_steps 50 \
-  --num_train_epochs 5 \
+  --num_train_epochs 3 \
   --output_dir ".logs/dolly_pythia-70m" \
-  --logging_steps 50 \
+  --logging_steps 20 \
   --eval_steps 200 \
   --save_steps 200 \
   --save_total_limit 10 \

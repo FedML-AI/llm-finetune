@@ -133,6 +133,10 @@ def parse_hf_args(
             args_dict.pop("local_rank", None)
             args_dict.pop("device", None)
 
+        if "client_optimizer" in args_dict:
+            # if contains `client_optimizer` and `optim` is not set, use `client_optimizer`
+            args_dict.setdefault("optim", args_dict["client_optimizer"])
+
     elif isinstance(args, dict):
         args_dict = args
 

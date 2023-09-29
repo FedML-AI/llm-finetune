@@ -42,12 +42,6 @@ Hugging Face repo access.
 > - To pass an access token, you need to do one of the following:
 >   - Set environment variable `HUGGING_FACE_HUB_TOKEN="<your access token>"`
 >   - For centralized/conventional training, pass `--auth_token "<your access token>"` in the command line.
->   - For federated training, update the [fedml_config.yaml](fedml_config/fedml_config.yaml) as follow:
->   - ```yaml
->     model_args:
->        auth_token: "<your access token>"
->        ...
->     ```
 
 ## Getting Started
 
@@ -69,19 +63,10 @@ pip install -r requirements.txt
 
 See [Dependencies](#dependencies) for more information on the dependency versions.
 
-### Prepare Dataset
-
-Run the following command to
-download [`databricks-dolly-15k`](https://github.com/databrickslabs/dolly/tree/master/data).
-
-```shell
-bash scripts/setup.sh
-```
-
 ### Conventional/Centralized Training
 
 The [`run_train.py`](run_train.py) contains a minimal example for conventional/centralized LLM training and fine-tuning
-on [`databricks-dolly-15k`](https://github.com/databrickslabs/dolly/tree/master/data) dataset.
+on [`databricks-dolly-15k`](https://huggingface.co/datasets/FedML/databricks-dolly-15k-niid) dataset.
 
 Example scripts:
 

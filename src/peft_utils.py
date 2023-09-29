@@ -1,5 +1,6 @@
-from peft.import_utils import is_bnb_available, is_bnb_4bit_available
 from torch import nn
+
+from .integrations import is_bnb_4bit_available, is_bnb_available
 
 if is_bnb_available():
     import bitsandbytes as bnb

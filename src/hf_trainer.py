@@ -8,11 +8,10 @@ from transformers.deepspeed import is_deepspeed_zero3_enabled
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from transformers.utils import WEIGHTS_NAME as HF_WEIGHTS_NAME
 
+from .distributed import barrier, is_deepspeed_module
 from .typing import PathType
 from .utils import (
-    barrier,
     move_directory_content,
-    is_deepspeed_module,
     is_directory,
     is_file,
 )

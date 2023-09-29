@@ -16,21 +16,10 @@ import shutil
 
 from fedml.arguments import Arguments
 import torch.cuda
-from torch import distributed as dist
-from torch.nn import Module
 from transformers import HfArgumentParser
-from transformers.deepspeed import is_deepspeed_available
 from peft import PeftModel, PromptLearningConfig
 
 from .typing import ModelType, PathType
-
-if is_deepspeed_available():
-    import deepspeed
-
-    is_deepspeed_initialized = deepspeed.comm.is_initialized
-else:
-    def is_deepspeed_initialized() -> bool:
-        return False
 
 T = TypeVar("T")
 
@@ -99,18 +88,6 @@ def save_config(model: ModelType, output_dir: PathType) -> None:
             peft_config.inference_mode = inference_mode
 
     model.config.save_pretrained(str(output_dir))
-
-
-def barrier() -> None:
-    if is_deepspeed_initialized():
-        deepspeed.comm.barrier()
-    elif dist.is_initialized():
-        dist.barrier()
-
-
-def is_deepspeed_module(model: Module) -> bool:
-    # TODO: verify
-    return any(hasattr(p, "ds_numel") for n, p in model.named_parameters())
 
 
 def parse_hf_args(

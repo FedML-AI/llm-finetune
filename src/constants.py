@@ -39,6 +39,7 @@ DATASET_NAMES = [
     "medalpaca/medical_meadow_mediqa",
     "bitext/Bitext-customer-support-llm-chatbot-training-dataset",
     "gbharti/wealth-alpaca_lora",
+    "lavita/ChatDoctor-HealthCareMagic-100k",
 ]
 
 PROMPT_STYLES = [

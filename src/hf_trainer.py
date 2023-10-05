@@ -1,3 +1,6 @@
+from typing import Dict
+
+import math
 from pathlib import Path
 import shutil
 
@@ -18,6 +21,21 @@ from .utils import (
 
 
 class HFTrainer(Trainer):
+    def log(self, logs: Dict[str, float]) -> None:
+        # compute perplexity
+        # Adapted from https://github.com/huggingface/transformers/blob/b71f20a7c9f3716d30f6738501559acf863e2c5c/examples/pytorch/language-modeling/run_clm.py#L630-L634
+        for key in tuple(logs.keys()):
+            if key.endswith("loss"):
+                prefix = key[:key.rfind("loss")]
+
+                try:
+                    perplexity = math.exp(logs[key])
+                except OverflowError:
+                    perplexity = float("inf")
+                logs[f"{prefix}perplexity"] = perplexity
+
+        super().log(logs)
+
     def save_checkpoint(self, output_dir: PathType, overwrite_peft_checkpoint: bool = True) -> None:
         output_dir = Path(output_dir)
         checkpoint_dir = Path(self.args.output_dir) / f"{PREFIX_CHECKPOINT_DIR}-{self.state.global_step}"

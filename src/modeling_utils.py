@@ -1,10 +1,12 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from dataclasses import dataclass, field
 import warnings
 
 import numpy as np
-from transformers import AutoConfig, DataCollatorForLanguageModeling
+from transformers import AutoConfig, AutoModelForCausalLM, DataCollatorForLanguageModeling
+from transformers.dynamic_module_utils import get_class_from_dynamic_module, resolve_trust_remote_code
+from transformers.models.auto.auto_factory import _BaseAutoModelClass, _get_model_class
 
 from .constants import IGNORE_INDEX
 from .typing import (
@@ -15,6 +17,7 @@ from .typing import (
     ModelType,
     TokenizerType,
 )
+from .utils import is_directory
 
 
 @dataclass
@@ -104,3 +107,39 @@ def get_vocab_size(model_or_config: Union[str, ModelConfigType, ModelType], **kw
         raise TypeError(f"\"{type(model_or_config)}\" is not a supported model_or_config type.")
 
     return getattr(config, "vocab_size", None)
+
+
+# Adapted from https://github.com/huggingface/transformers/blob/91d7df58b6537d385e90578dac40204cb550f706/src/transformers/models/auto/auto_factory.py#L407
+def get_model_class_from_config(
+        config: ModelConfigType,
+        cls: _BaseAutoModelClass = AutoModelForCausalLM,
+        **kwargs: Any
+) -> Type[ModelType]:
+    trust_remote_code = kwargs.pop("trust_remote_code", None)
+    has_remote_code = hasattr(config, "auto_map") and cls.__name__ in config.auto_map
+    has_local_code = type(config) in cls._model_mapping.keys()
+    trust_remote_code = resolve_trust_remote_code(
+        trust_remote_code, config._name_or_path, has_local_code, has_remote_code
+    )
+
+    if has_remote_code and trust_remote_code:
+        class_ref = config.auto_map[cls.__name__]
+        if "--" in class_ref:
+            repo_id, class_ref = class_ref.split("--")
+        else:
+            repo_id = config.name_or_path
+        model_class: Any = get_class_from_dynamic_module(class_ref, repo_id, **kwargs)
+        if is_directory(config._name_or_path):
+            model_class.register_for_auto_class(cls.__name__)
+        else:
+            cls.register(config.__class__, model_class, exist_ok=True)
+        _ = kwargs.pop("code_revision", None)
+        return model_class
+
+    elif type(config) in cls._model_mapping.keys():
+        return _get_model_class(config, cls._model_mapping)
+
+    else:
+        raise ValueError(
+            f"Unrecognized configuration class {config.__class__} for this kind of AutoModel: {cls.__name__}."
+        )

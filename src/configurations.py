@@ -56,6 +56,7 @@ class ModelArguments:
         }
     )
     load_pretrained: bool = field(default=True, metadata={"help": "Whether to load pretrained model."})
+    use_flash_attention: bool = field(default=False, metadata={"help": "Whether to use flash attention."})
 
     def __post_init__(self) -> None:
         if is_file(self.model_name_or_path):

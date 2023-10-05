@@ -23,6 +23,7 @@ from src.dataset_utils import (
 )
 from src.hf_trainer import HFTrainer
 from src.modeling_utils import get_data_collator, get_max_seq_length as _get_max_seq_length, get_vocab_size
+from src.models import add_flash_attention
 from src.trainer_callback import SavePeftModelCallback
 from src.typing import ModelConfigType, ModelType, TokenizerType
 from src.utils import parse_hf_args, save_config
@@ -157,6 +158,9 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
 
         # model.config should also be updated
         assert model.config.vocab_size == tokenizer_length
+
+    if model_args.use_flash_attention:
+        add_flash_attention(model)
 
     if model_args.use_lora:
         if model_args.lora_on_all_modules:

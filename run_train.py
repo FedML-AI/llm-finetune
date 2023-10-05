@@ -2,6 +2,7 @@ from typing import Any, Optional, Tuple, Union
 
 import logging
 
+from accelerate.utils import compare_versions
 from datasets import Dataset, load_dataset
 from peft import (
     get_peft_model,
@@ -22,7 +23,13 @@ from src.dataset_utils import (
     RESPONSE_KEY_NL,
 )
 from src.hf_trainer import HFTrainer
-from src.modeling_utils import get_data_collator, get_max_seq_length as _get_max_seq_length, get_vocab_size
+from src.modeling_utils import (
+    get_data_collator,
+    get_max_seq_length as _get_max_seq_length,
+    get_model_class_from_config,
+    get_vocab_size,
+)
+from src.models import add_flash_attention
 from src.trainer_callback import SavePeftModelCallback
 from src.typing import ModelConfigType, ModelType, TokenizerType
 from src.utils import parse_hf_args, save_config
@@ -137,6 +144,21 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
     kwargs.setdefault("trust_remote_code", True)
     torch_dtype = kwargs.pop("torch_dtype", model_args.torch_dtype)
 
+    config = AutoConfig.from_pretrained(model_args.model_name_or_path, torch_dtype=torch_dtype, **kwargs)
+    model_cls = get_model_class_from_config(config, **kwargs)
+
+    use_transformers_flash_attn = False
+    if (
+            compare_versions("transformers", ">=", "4.34.0")
+            and getattr(model_cls, "_supports_flash_attn_2", False)
+    ):
+        # starting from transformers v4.34.0, some HF models support flash attention v2
+        # only enable `use_flash_attention_2` flag for supported models; other models will be
+        # patched by `add_flash_attention`
+        # see https://github.com/huggingface/transformers/issues/26350
+        kwargs.setdefault("use_flash_attention_2", model_args.use_flash_attention)
+        use_transformers_flash_attn = model_args.use_flash_attention
+
     if model_args.load_pretrained:
         kwargs.setdefault("low_cpu_mem_usage", not is_deepspeed_zero3_enabled())
 
@@ -146,8 +168,15 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
             **kwargs
         )
     else:
+        if use_transformers_flash_attn:
+            # As of transformers v4.34.0, `AutoModel.from_config` does not support `use_flash_attention_2` flag
+            config = model_cls._check_and_enable_flash_attn_2(
+                config,
+                torch_dtype=torch_dtype,
+                device_map=kwargs.get("device_map", None)
+            )
+
         # see https://discuss.huggingface.co/t/how-to-load-model-without-pretrained-weight/34155/3
-        config = AutoConfig.from_pretrained(model_args.model_name_or_path, torch_dtype=torch_dtype, **kwargs)
         model = AutoModelForCausalLM.from_config(config, torch_dtype=torch_dtype)
 
     model_vocab_size = get_vocab_size(model.config)
@@ -157,6 +186,10 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
 
         # model.config should also be updated
         assert model.config.vocab_size == tokenizer_length
+
+    if model_args.use_flash_attention and not use_transformers_flash_attn:
+        # patch models that do not support `use_flash_attention_2`
+        add_flash_attention(model)
 
     if model_args.use_lora:
         if model_args.lora_on_all_modules:

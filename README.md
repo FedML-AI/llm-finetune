@@ -97,15 +97,15 @@ bash scripts/train_deepspeed.sh \
 We have tested our implement with the following setup:
 
 - Ubuntu `20.04.5 LTS` and `22.04.2 LTS`
-- CUDA `11.8`, `11.7` and `11.6`
+- CUDA `12.2`, `11.8`, `11.7` and `11.6`
 - Python `3.8.13` and `3.9.16`
     - `fedml>=0.8.4a7`
-    - `torch>=2.0.0,<=2.0.1`
-    - `torchvision>=0.15.1,<=0.15.2`
-    - `transformers>=4.29.2,<=4.31.0`
-    - `peft>=0.3.0,<=0.5.0`
+    - `torch>=2.0.0,<=2.1.0`
+    - `torchvision>=0.15.1,<=0.16.0`
+    - `transformers>=4.31.0,<=4.34.0`
+    - `peft>=0.4.0,<=0.5.0`
     - `datasets>=2.11.0,<=2.14.5`
-    - `deepspeed>=0.9.1,<=0.10.2`
+    - `deepspeed>=0.9.1,<=0.10.3`
     - `numpy>=1.24.3,<=1.24.4`
     - `tensorboard>=2.12.2,<=2.13.0`
-    - `mpi4py==3.1.4`
+    - `mpi4py>=3.1.4,<=3.1.5`

@@ -1,17 +1,6 @@
 import importlib.util
 
-from peft.import_utils import is_bnb_available
-
-try:
-    from peft.import_utils import is_bnb_4bit_available
-except ImportError:
-    def is_bnb_4bit_available() -> bool:
-        if not is_bnb_available():
-            return False
-
-        import bitsandbytes as bnb
-
-        return hasattr(bnb.nn, "Linear4bit")
+from peft.import_utils import is_bnb_available, is_bnb_4bit_available
 
 
 def _is_package_available(package_name: str) -> bool:

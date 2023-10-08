@@ -2,6 +2,7 @@ from typing import Any, Optional, TypeVar, Union
 
 from os import PathLike
 
+from datasets import Dataset, IterableDataset
 from peft import PeftModel, PeftConfig
 import torch
 from transformers import (
@@ -13,17 +14,20 @@ from transformers import (
 
 __all__ = [
     "DataCollatorType",
+    "DatasetType",
     "is_model_config_type",
     "is_model_type",
     "ModelConfigType",
     "ModelType",
     "PathType",
+    "to_torch_dtype",
     "TokenizerType",
 ]
 
 PathType = Union[str, PathLike]
 
 DataCollatorType = TypeVar("DataCollatorType", bound=DataCollatorForLanguageModeling)
+DatasetType = Union[Dataset, IterableDataset]
 ModelConfigType = TypeVar("ModelConfigType", bound=Union[PretrainedConfig, PeftConfig])
 ModelType = TypeVar("ModelType", bound=Union[PreTrainedModel, PeftModel])
 TokenizerType = TypeVar("TokenizerType", bound=PreTrainedTokenizerBase)

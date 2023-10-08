@@ -3,7 +3,7 @@ from typing import Any, Optional, Tuple, Union
 import logging
 
 from accelerate.utils import compare_versions
-from datasets import Dataset, load_dataset
+from datasets import load_dataset
 from peft import (
     get_peft_model,
     LoraConfig,
@@ -31,15 +31,15 @@ from src.modeling_utils import (
 )
 from src.models import add_flash_attention
 from src.trainer_callback import SavePeftModelCallback
-from src.typing import ModelConfigType, ModelType, TokenizerType
+from src.typing import DatasetType, ModelConfigType, ModelType, TokenizerType
 from src.utils import parse_hf_args, save_config
 
 
 def preprocess_dataset(
         dataset_args: DatasetArguments,
-        dataset: Dataset,
+        dataset: DatasetType,
         tokenizer: TokenizerType
-) -> Dataset:
+) -> DatasetType:
     if {"input", "output"}.issubset(dataset.column_names):
         # This is required for medical meadow
         dataset = dataset.rename_columns({
@@ -79,7 +79,7 @@ def get_dataset(
         dataset_args: DatasetArguments,
         tokenizer: TokenizerType,
         seed: Optional[int] = None
-) -> Tuple[Dataset, Dataset]:
+) -> Tuple[DatasetType, DatasetType]:
     dataset_kwargs = dict(
         path="json",
         name=dataset_args.dataset_config_name,

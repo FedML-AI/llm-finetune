@@ -13,3 +13,6 @@ mpi4py
 sentencepiece
 tensorboard
 tqdm
+ninja
+packaging
+pyyaml

@@ -2,10 +2,11 @@ from typing import Iterable, Union
 
 from torch import distributed as dist
 from torch.nn import Module, Parameter
-from transformers.deepspeed import is_deepspeed_available
+
+from .integrations import is_deepspeed_available
 
 if is_deepspeed_available():
-    import deepspeed
+    import deepspeed.comm
 
     is_deepspeed_initialized = deepspeed.comm.is_initialized
 else:

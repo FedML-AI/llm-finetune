@@ -10,7 +10,6 @@ from peft import (
     TaskType,
 )
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
-from transformers.deepspeed import is_deepspeed_zero3_enabled
 
 from src.configurations import DatasetArguments, FinetuningArguments, ModelArguments
 from src.constants import (
@@ -23,6 +22,7 @@ from src.dataset_utils import (
     RESPONSE_KEY_NL,
 )
 from src.hf_trainer import HFTrainer
+from src.integrations import is_deepspeed_zero3_enabled
 from src.modeling_utils import (
     get_data_collator,
     get_max_seq_length as _get_max_seq_length,

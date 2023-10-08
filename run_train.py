@@ -30,7 +30,6 @@ from src.modeling_utils import (
     get_vocab_size,
 )
 from src.models import add_flash_attention
-from src.trainer_callback import SavePeftModelCallback
 from src.typing import DatasetType, ModelConfigType, ModelType, TokenizerType
 from src.utils import parse_hf_args, save_config
 
@@ -285,11 +284,7 @@ def train() -> None:
             tokenizer,
             escape_token=RESPONSE_KEY_NL if training_args.is_instruction_finetune else None,
             pad_to_multiple_of=dataset_args.max_seq_length
-        ),
-        callbacks=[
-            # save peft adapted model weights
-            SavePeftModelCallback(),
-        ]
+        )
     )
 
     if training_args.do_train:

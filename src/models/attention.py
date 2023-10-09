@@ -123,15 +123,15 @@ def flash_attention(
     # attention_mask (float): [batch_size, seq_len]
     batch_size, seq_len = q.size(0), q.size(1)
 
+    # for gpt-neo-x and gpt-j the query and keys are always in fp32 and the output has the same dtype
+    # as value, thus we need to cast them before and after flash attention
     out_dtype = attn_dtype = v.dtype
-    if out_dtype not in (torch.float16, torch.bfloat16):
+    if attn_dtype not in (torch.float16, torch.bfloat16):
         # flash attention only support fp16/bf16
         attn_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
 
-    # for gpt-neo-x and gpt-j the query and keys are always in fp32, thus we need to cast them
-    # to the value dtype
     # pack q, k, v
-    qkv = torch.stack([q.to(attn_dtype), k.to(attn_dtype), v.to(attn_dtype)], dim=2)
+    qkv = torch.stack([q, k, v], dim=2).to(attn_dtype)
 
     if attention_mask is None:
         out = flash_self_attention_qkvpacked(qkv, **attn_func_kwargs)

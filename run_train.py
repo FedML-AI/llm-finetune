@@ -1,6 +1,9 @@
 from typing import Any, Optional, Tuple, Union
 
+from datetime import timedelta
 import logging
+from pathlib import Path
+from timeit import default_timer as timer
 
 from accelerate.utils import compare_versions
 from datasets import load_dataset
@@ -278,16 +281,25 @@ def train() -> None:
         )
     )
 
+    # log training time
+    start_time = timer()
+
     if training_args.do_train:
+        final_output_dir = Path(training_args.output_dir) / "final"
+
         if trainer.args.should_save:
             # save model config before training
-            save_config(model, training_args.output_dir)
+            save_config(model, final_output_dir)
 
         logging.info("Training")
         trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
 
         logging.info(f"Saving model to \"{training_args.output_dir}\"")
-        trainer.save_checkpoint(training_args.output_dir)
+        trainer.save_checkpoint(final_output_dir)
+
+    # log training time
+    end_time = timer()
+    logging.info(f"[{training_args.process_index}] total training time: {timedelta(seconds=end_time - start_time)}")
 
     if training_args.do_eval:
         logging.info("Evaluating")

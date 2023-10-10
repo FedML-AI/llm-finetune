@@ -15,7 +15,6 @@ if [[ -z "${CUDA_VISIBLE_DEVICES+x}" && "${NUM_GPU}" -gt 1 ]]; then
 fi
 
 python3 run_train.py \
-  --task "instruction" \
   --model_name_or_path "EleutherAI/pythia-70m" \
   --dataset_name "FedML/databricks-dolly-15k-niid" \
   --seed 1234 \

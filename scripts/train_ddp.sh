@@ -16,7 +16,6 @@ torchrun \
   --rdzv-endpoint="${MASTER_ADDR}:${MASTER_PORT}" \
   run_train.py \
   --ddp_find_unused_parameters "False" \
-  --task "instruction" \
   --model_name_or_path "EleutherAI/pythia-70m" \
   --dataset_name "FedML/databricks-dolly-15k-niid" \
   --seed 1234 \

@@ -6,11 +6,9 @@ import warnings
 
 from accelerate.utils import compare_versions
 import torch
-from transformers import TrainingArguments
 
 from .constants import (
     DATASET_NAMES,
-    FINETUNE_TASKS,
     MODEL_DTYPES,
     MODEL_DTYPE_MAPPING,
     MODEL_NAMES,
@@ -19,15 +17,6 @@ from .constants import (
 from .dataset_utils import RESPONSE_KEY, RESPONSE_KEY_NL
 from .typing import to_torch_dtype
 from .utils import is_directory, is_file
-
-
-@dataclass
-class FinetuningArguments(TrainingArguments):
-    task: str = field(default="finetune", metadata={"help": "finetune task type", "choices": FINETUNE_TASKS})
-
-    @property
-    def is_instruction_finetune(self) -> bool:
-        return self.task == "instruction"
 
 
 @dataclass

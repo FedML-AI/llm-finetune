@@ -17,7 +17,6 @@ deepspeed \
   --master_port="${MASTER_PORT}" \
   run_train.py \
   --deepspeed "configs/deepspeed/ds_z3_bf16_config.json" \
-  --task "instruction" \
   --model_name_or_path "EleutherAI/pythia-70m" \
   --dataset_name "FedML/databricks-dolly-15k-niid" \
   --seed 1234 \

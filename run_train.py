@@ -12,9 +12,9 @@ from peft import (
     LoraConfig,
     TaskType,
 )
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, TrainingArguments
 
-from src.configurations import DatasetArguments, FinetuningArguments, ModelArguments
+from src.configurations import DatasetArguments, ModelArguments
 from src.constants import (
     DEFAULT_MAX_SEQ_LENGTH,
 )
@@ -248,7 +248,7 @@ def get_max_seq_length(
 
 def train() -> None:
     # configs
-    model_args, dataset_args, training_args = parse_hf_args((ModelArguments, DatasetArguments, FinetuningArguments))
+    model_args, dataset_args, training_args = parse_hf_args((ModelArguments, DatasetArguments, TrainingArguments))
 
     # prepare models
     logging.info(f"Loading tokenizer for \"{model_args.model_name_or_path}\"")

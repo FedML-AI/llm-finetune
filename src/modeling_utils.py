@@ -51,6 +51,14 @@ class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
         self.response_template = response_template
         self.response_token_ids = self.tokenizer.encode(self.response_template, add_special_tokens=False)
 
+        # See https://github.com/huggingface/trl/pull/622
+        # See https://github.com/huggingface/trl/issues/598
+        # See https://huggingface.co/docs/trl/sft_trainer#using-tokenids-directly-for-responsetemplate
+        # Some tokenizers such as "GPT2Tokenizer" and "Llama2Tokenizer" tokenize input string differently
+        # depending on the context. Below are fallback solutions
+        self.response_template_ctx = f"\n{response_template}"
+        self.response_ctx_token_ids = self.tokenizer.encode(self.response_template_ctx, add_special_tokens=False)[2:]
+
     def torch_call(self, examples: List[Union[List[int], Any, Dict[str, Any]]]) -> Dict[str, Any]:
         batch = super().torch_call(examples)
 
@@ -64,15 +72,28 @@ class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
                     response_token_ids_start_idx = idx
                     break
             else:
-                warnings.warn(
-                    f"{type(self).__name__} Could not find response key `{self.response_template}` in the"
-                    f" following instance: {self.tokenizer.decode(batch['labels'][i])}"
-                    f" This instance will be ignored in loss calculation."
-                    f" Note, if this happens often, consider increasing the `max_seq_length`."
-                )
+                # Fallback to `response_ctx_token_ids` for tokenizers that requires the input in
+                # context (e.g. "GPT2Tokenizer" and "Llama2Tokenizer")
+                for idx in np.where(batch["labels"][i] == self.response_ctx_token_ids[0])[0]:
+                    if (
+                            self.response_ctx_token_ids
+                            == batch["labels"][i][idx: idx + len(self.response_ctx_token_ids)].tolist()
+                    ):
+                        response_token_ids_start_idx = idx
+                        break
 
-                # set to the max length of the current sample
-                response_token_ids_start_idx = len(batch["labels"][i])
+                else:
+                    input_ids = batch['labels'][i][batch['attention_mask'][i] > 0].tolist()
+
+                    warnings.warn(
+                        f"{type(self).__name__} Could not find response key `{self.response_template}` in the"
+                        f" following instance: ```{self.tokenizer.decode(input_ids)}```"
+                        f" This instance will be ignored in loss calculation."
+                        f" Note, if this happens often, consider increasing the `max_seq_length`."
+                    )
+
+                    # set to the max length of the current sample
+                    response_token_ids_start_idx = len(batch["labels"][i])
 
             response_token_ids_end_idx = response_token_ids_start_idx + len(self.response_token_ids)
 

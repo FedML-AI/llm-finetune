@@ -16,6 +16,7 @@ from .constants import (
     MODEL_NAMES,
     PROMPT_STYLES,
 )
+from .dataset_utils import RESPONSE_KEY, RESPONSE_KEY_NL
 from .typing import to_torch_dtype
 from .utils import is_directory, is_file
 
@@ -150,6 +151,14 @@ class DatasetArguments:
     prompt_style: str = field(
         default="dolly",
         metadata={"help": "Prompt template style.", "choices": PROMPT_STYLES}
+    )
+    response_template: str = field(
+        default=RESPONSE_KEY_NL,
+        metadata={
+            "help": f"The response template for instruction fine-tuning such as `{RESPONSE_KEY}`. If set to"
+                    f" a non-empty string, The response template and all text before it will not be included"
+                    f" in the loss computation.",
+        }
     )
 
     def __post_init__(self) -> None:

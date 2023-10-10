@@ -18,7 +18,7 @@ from src.configurations import DatasetArguments, FinetuningArguments, ModelArgum
 from src.constants import (
     DEFAULT_MAX_SEQ_LENGTH,
 )
-from src.dataset_utils import get_prompt_formatter, RESPONSE_KEY_NL
+from src.dataset_utils import get_prompt_formatter
 from src.hf_trainer import HFTrainer
 from src.integrations import is_deepspeed_zero3_enabled
 from src.modeling_utils import (
@@ -276,7 +276,9 @@ def train() -> None:
         eval_dataset=test_dataset,
         data_collator=get_data_collator(
             tokenizer,
-            response_template=RESPONSE_KEY_NL if training_args.is_instruction_finetune else None,
+            response_template=dataset_args.response_template,
+            # set to `pad_to_multiple_of` to max_seq_length so that all distributed processes share the same
+            # sequence length. This is required for computing metrics.
             pad_to_multiple_of=dataset_args.max_seq_length
         )
     )

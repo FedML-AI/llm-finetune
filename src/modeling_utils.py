@@ -1,6 +1,5 @@
 from typing import Any, Dict, List, Optional, Type, Union
 
-from dataclasses import dataclass, field
 import warnings
 
 import numpy as np
@@ -20,62 +19,96 @@ from .typing import (
 from .utils import is_directory
 
 
-@dataclass
+# Adapted from https://github.com/huggingface/trl/blob/01c4a35928f41ba25b1d0032a085519b8065c843/trl/trainer/utils.py#L56
 class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
-    escape_token: Optional[str] = field(
-        default=None,
-        metadata={"help": "If not `None`, will turn off loss for all tokens up until this token"}
-    )
+    def __init__(
+            self,
+            tokenizer: TokenizerType,
+            response_template: str,
+            ignore_index: int = IGNORE_INDEX,
+            mlm: bool = True,
+            mlm_probability: float = 0.15,
+            pad_to_multiple_of: Optional[int] = None,
+            tf_experimental_compile: bool = False,
+            return_tensors: str = "pt"
+    ):
+        super().__init__(
+            tokenizer,
+            mlm=mlm,
+            mlm_probability=mlm_probability,
+            pad_to_multiple_of=pad_to_multiple_of,
+            tf_experimental_compile=tf_experimental_compile,
+            return_tensors=return_tensors
+        )
+
+        self.ignore_index = ignore_index
+
+        if len(response_template) == 0:
+            raise ValueError(f"{type(self).__name__} requires a non-empty `response_template`.")
+
+        # The prompt ends with the response template. We encode this and then try to find it in the
+        # sequence of tokens.
+        self.response_template = response_template
+        self.response_token_ids = self.tokenizer.encode(self.response_template, add_special_tokens=False)
 
     def torch_call(self, examples: List[Union[List[int], Any, Dict[str, Any]]]) -> Dict[str, Any]:
         batch = super().torch_call(examples)
 
-        if self.escape_token is not None:
-            # The prompt ends with the response key plus a newline.  We encode this and then try to find it in the
-            # sequence of tokens. This should just be a single token.
-            response_token_ids = self.tokenizer.encode(self.escape_token)
-
-            labels = batch["labels"].clone()
-
-            for i in range(len(examples)):
-                for idx in np.where(batch["labels"][i] == response_token_ids[0])[0]:
+        for i in range(len(examples)):
+            for idx in np.where(batch["labels"][i] == self.response_token_ids[0])[0]:
+                # `response_token_ids` is `'### Response:\n'`, here we are just making sure that the token IDs match
+                if (
+                        self.response_token_ids
+                        == batch["labels"][i][idx: idx + len(self.response_token_ids)].tolist()
+                ):
                     response_token_ids_start_idx = idx
                     break
-                else:
-                    warnings.warn(
-                        f"{type(self).__name__} Could not find response key {response_token_ids} in token IDs {batch['labels'][i]}"
-                    )
+            else:
+                warnings.warn(
+                    f"{type(self).__name__} Could not find response key `{self.response_template}` in the"
+                    f" following instance: {self.tokenizer.decode(batch['labels'][i])}"
+                    f" This instance will be ignored in loss calculation."
+                    f" Note, if this happens often, consider increasing the `max_seq_length`."
+                )
 
-                    response_token_ids_start_idx = len(batch["labels"][i])
+                # set to the max length of the current sample
+                response_token_ids_start_idx = len(batch["labels"][i])
 
-                response_token_ids_end_idx = response_token_ids_start_idx + 1
+            response_token_ids_end_idx = response_token_ids_start_idx + len(self.response_token_ids)
 
-                # Make pytorch loss function ignore all tokens up through the end of the response key
-                labels[i, :response_token_ids_end_idx] = IGNORE_INDEX
-
-            batch["labels"] = labels
+            # Make pytorch loss function ignore all tokens up through the end of the response template
+            batch["labels"][i, :response_token_ids_end_idx] = self.ignore_index
 
         return batch
 
 
 def get_data_collator(
         tokenizer: TokenizerType,
-        escape_token: Optional[str] = None,
+        response_template: Optional[str] = None,
+        ignore_index: int = IGNORE_INDEX,
         pad_to_multiple_of: Optional[int] = 8,
+        mlm: bool = False,
+        return_tensors: str = "pt",
         **kwargs: Any
 ) -> DataCollatorType:
     _kwargs = dict(
-        mlm=False,
-        return_tensors="pt"
-    )
-    _kwargs.update(**kwargs)
-
-    return DataCollatorForCompletionOnlyLM(
-        tokenizer=tokenizer,
+        mlm=mlm,
         pad_to_multiple_of=pad_to_multiple_of,
-        escape_token=escape_token,
-        **_kwargs
+        return_tensors=return_tensors,
+        **kwargs,
     )
+
+    if bool(response_template):
+        # if response_template is a non-empty string
+        return DataCollatorForCompletionOnlyLM(
+            tokenizer=tokenizer,
+            response_template=response_template,
+            ignore_index=ignore_index,
+            **_kwargs
+        )
+
+    else:
+        return DataCollatorForLanguageModeling(tokenizer=tokenizer, **_kwargs)
 
 
 def get_max_seq_length(model_or_config: Union[str, ModelConfigType, ModelType], **kwargs: Any) -> Optional[int]:

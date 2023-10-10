@@ -15,12 +15,7 @@ from src.configurations import DatasetArguments, FinetuningArguments, ModelArgum
 from src.constants import (
     DEFAULT_MAX_SEQ_LENGTH,
 )
-from src.dataset_utils import (
-    END_KEY,
-    get_prompt_formatter,
-    INSTRUCTION_KEY,
-    RESPONSE_KEY_NL,
-)
+from src.dataset_utils import get_prompt_formatter, RESPONSE_KEY_NL
 from src.hf_trainer import HFTrainer
 from src.integrations import is_deepspeed_zero3_enabled
 from src.modeling_utils import (
@@ -124,17 +119,13 @@ def get_dataset(
     return train_dataset, test_dataset
 
 
-def get_tokenizer(model_args: ModelArguments, add_special_tokens: bool = False, **kwargs) -> TokenizerType:
+def get_tokenizer(model_args: ModelArguments, **kwargs) -> TokenizerType:
     kwargs.setdefault("trust_remote_code", True)
 
     tokenizer: TokenizerType = AutoTokenizer.from_pretrained(model_args.model_name_or_path, **kwargs)
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-
-    # TODO: support additional tokens
-    if add_special_tokens:
-        tokenizer.add_special_tokens({"additional_special_tokens": [END_KEY, INSTRUCTION_KEY, RESPONSE_KEY_NL]})
 
     return tokenizer
 
@@ -258,7 +249,7 @@ def train() -> None:
 
     # prepare models
     logging.info(f"Loading tokenizer for \"{model_args.model_name_or_path}\"")
-    tokenizer = get_tokenizer(model_args, add_special_tokens=training_args.is_instruction_finetune)
+    tokenizer = get_tokenizer(model_args)
 
     logging.info(f"Loading model for \"{model_args.model_name_or_path}\"")
     model = get_model(model_args, tokenizer_length=len(tokenizer), use_cache=not training_args.gradient_checkpointing)
@@ -282,7 +273,7 @@ def train() -> None:
         eval_dataset=test_dataset,
         data_collator=get_data_collator(
             tokenizer,
-            escape_token=RESPONSE_KEY_NL if training_args.is_instruction_finetune else None,
+            response_template=RESPONSE_KEY_NL if training_args.is_instruction_finetune else None,
             pad_to_multiple_of=dataset_args.max_seq_length
         )
     )

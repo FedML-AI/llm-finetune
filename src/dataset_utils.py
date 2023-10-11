@@ -1,4 +1,4 @@
-from typing import Any, Callable, MutableMapping, TypeVar
+from typing import Any, Callable, Mapping, MutableMapping, Optional, TypeVar
 
 from functools import partial
 
@@ -110,4 +110,26 @@ def get_prompt_formatter(prompt_style: str) -> Callable[[MutableMapping[str, Any
 
 def apply_prompt_template(sample: T, template_func: Callable[[MutableMapping[str, Any]], str]) -> T:
     sample["text"] = template_func(sample)
+    return sample
+
+
+# -----------------------------------------------------------------
+
+DEFAULT_KEYWORD_REPLACEMENTS = {
+    # for "lavita/ChatDoctor-HealthCareMagic-100k"
+    "Chat Doctor": "AI Assistant",
+}
+
+
+def get_keyword_replacer(replacements: Optional[Mapping[str, str]] = None) -> Callable[[MutableMapping[str, Any]], str]:
+    if replacements is None:
+        return partial(apply_keyword_replacer, replacements=DEFAULT_KEYWORD_REPLACEMENTS)
+
+    else:
+        return partial(apply_keyword_replacer, replacements=replacements)
+
+
+def apply_keyword_replacer(sample: T, replacements: Mapping[str, str]) -> T:
+    for keyword, replacement in replacements.items():
+        sample["text"] = sample["text"].replace(keyword, replacement)
     return sample

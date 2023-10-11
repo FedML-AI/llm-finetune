@@ -96,6 +96,8 @@ def get_dataset(
         dataset_kwargs["data_files"] = dataset_args.dataset_path
 
     dataset_dict = load_dataset(**dataset_kwargs)
+    if dataset_args.cleanup_data_cache:
+        dataset_dict.cleanup_cache_files()
     if len(dataset_dict.keys()) == 1:
         dataset = preprocess_dataset(dataset_args, dataset_dict["train"], tokenizer)
 

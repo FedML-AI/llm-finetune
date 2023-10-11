@@ -149,6 +149,13 @@ class DatasetArguments:
                     f" in the loss computation.",
         }
     )
+    cleanup_data_cache: bool = field(
+        default=False,
+        metadata={
+            "help": f"Whether to cleanup the data cache before data preprocessing. This is useful when"
+                    f" developing/changing the data preprocessing logic since `datasets`.",
+        }
+    )
 
     def __post_init__(self) -> None:
         if self.dataset_name == "none":

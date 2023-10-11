@@ -8,7 +8,6 @@ T = TypeVar("T")
 INSTRUCTION_KEY = "### Instruction:"
 INPUT_KEY = "Input:"
 RESPONSE_KEY = "### Response:"
-END_KEY = "### End"
 RESPONSE_KEY_NL = f"{RESPONSE_KEY}\n"
 
 # This is a training prompt that does not contain an input string. The instruction by itself has enough information
@@ -21,8 +20,7 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 {RESPONSE_KEY}
 {{response}}
-
-{END_KEY}"""
+"""
 
 # This is a training prompt that contains an input string that serves as context for the instruction. For example,
 # the input might be a passage from Wikipedia and the instruction is to extract some information from it.
@@ -37,8 +35,7 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 {RESPONSE_KEY}
 {{response}}
-
-{END_KEY}"""
+"""
 
 
 # Adapted from https://www.philschmid.de/deepspeed-lora-flash-attention
@@ -74,8 +71,7 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 {RESPONSE_KEY}
 {{response}}
-
-{END_KEY}"""
+"""
 
 LLAMA_PROMPT_WITH_CONTEXT_TEMPLATE = f"""\
 {B_INST} {B_SYS}
@@ -91,8 +87,7 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 {RESPONSE_KEY}
 {{response}}
-
-{END_KEY}"""
+"""
 
 
 def format_llama(sample: MutableMapping[str, Any]) -> str:

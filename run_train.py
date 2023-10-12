@@ -74,7 +74,8 @@ def preprocess_dataset(
 def get_dataset(
         dataset_args: DatasetArguments,
         tokenizer: TokenizerType,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        is_local_main_process: bool = True
 ) -> Tuple[DatasetType, DatasetType]:
     dataset_kwargs = dict(
         path="json",
@@ -96,7 +97,8 @@ def get_dataset(
         dataset_kwargs["data_files"] = dataset_args.dataset_path
 
     dataset_dict = load_dataset(**dataset_kwargs)
-    if dataset_args.cleanup_data_cache:
+    if dataset_args.cleanup_data_cache and is_local_main_process:
+        # only cleanup cache on local main process (i.e. local_rank == 0)
         dataset_dict.cleanup_cache_files()
     if len(dataset_dict.keys()) == 1:
         dataset = preprocess_dataset(dataset_args, dataset_dict["train"], tokenizer)
@@ -266,7 +268,8 @@ def train() -> None:
         train_dataset, test_dataset = get_dataset(
             dataset_args=dataset_args,
             tokenizer=tokenizer,
-            seed=training_args.seed
+            seed=training_args.seed,
+            is_local_main_process=training_args.local_process_index == 0
         )
 
     trainer = HFTrainer(

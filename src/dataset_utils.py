@@ -1,4 +1,4 @@
-from typing import Any, Callable, MutableMapping, TypeVar
+from typing import Any, Callable, Mapping, MutableMapping, Optional, TypeVar
 
 from functools import partial
 
@@ -8,7 +8,6 @@ T = TypeVar("T")
 INSTRUCTION_KEY = "### Instruction:"
 INPUT_KEY = "Input:"
 RESPONSE_KEY = "### Response:"
-END_KEY = "### End"
 RESPONSE_KEY_NL = f"{RESPONSE_KEY}\n"
 
 # This is a training prompt that does not contain an input string. The instruction by itself has enough information
@@ -21,8 +20,7 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 {RESPONSE_KEY}
 {{response}}
-
-{END_KEY}"""
+"""
 
 # This is a training prompt that contains an input string that serves as context for the instruction. For example,
 # the input might be a passage from Wikipedia and the instruction is to extract some information from it.
@@ -37,8 +35,7 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 {RESPONSE_KEY}
 {{response}}
-
-{END_KEY}"""
+"""
 
 
 # Adapted from https://www.philschmid.de/deepspeed-lora-flash-attention
@@ -74,8 +71,7 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 {RESPONSE_KEY}
 {{response}}
-
-{END_KEY}"""
+"""
 
 LLAMA_PROMPT_WITH_CONTEXT_TEMPLATE = f"""\
 {B_INST} {B_SYS}
@@ -91,8 +87,7 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 {RESPONSE_KEY}
 {{response}}
-
-{END_KEY}"""
+"""
 
 
 def format_llama(sample: MutableMapping[str, Any]) -> str:
@@ -115,4 +110,26 @@ def get_prompt_formatter(prompt_style: str) -> Callable[[MutableMapping[str, Any
 
 def apply_prompt_template(sample: T, template_func: Callable[[MutableMapping[str, Any]], str]) -> T:
     sample["text"] = template_func(sample)
+    return sample
+
+
+# -----------------------------------------------------------------
+
+DEFAULT_KEYWORD_REPLACEMENTS = {
+    # for "lavita/ChatDoctor-HealthCareMagic-100k"
+    "Chat Doctor": "AI Assistant",
+}
+
+
+def get_keyword_replacer(replacements: Optional[Mapping[str, str]] = None) -> Callable[[MutableMapping[str, Any]], str]:
+    if replacements is None:
+        return partial(apply_keyword_replacer, replacements=DEFAULT_KEYWORD_REPLACEMENTS)
+
+    else:
+        return partial(apply_keyword_replacer, replacements=replacements)
+
+
+def apply_keyword_replacer(sample: T, replacements: Mapping[str, str]) -> T:
+    for keyword, replacement in replacements.items():
+        sample["text"] = sample["text"].replace(keyword, replacement)
     return sample

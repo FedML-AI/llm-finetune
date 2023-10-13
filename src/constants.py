@@ -36,6 +36,11 @@ DATASET_NAMES = [
     "lavita/ChatDoctor-HealthCareMagic-100k",
 ]
 
+PEFT_TYPES = [
+    "none",
+    "lora",
+]
+
 PROMPT_STYLES = [
     "dolly",
     "llama",

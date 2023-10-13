@@ -13,6 +13,7 @@ from .constants import (
     MODEL_DTYPES,
     MODEL_DTYPE_MAPPING,
     MODEL_NAMES,
+    PEFT_TYPES,
     PROMPT_STYLES,
 )
 from .dataset_utils import RESPONSE_KEY, RESPONSE_KEY_NL
@@ -24,13 +25,16 @@ from .utils import is_directory, is_file
 class ModelArguments:
     model_name_or_path: str = field(default="EleutherAI/pythia-70m", metadata={"help": "model name or path."})
     model_dtype: Optional[str] = field(default=None, metadata={"help": "model dtype.", "choices": MODEL_DTYPES})
-    use_lora: bool = field(default=True, metadata={"help": "Whether to enable LoRA."})
+    peft_type: str = field(
+        default="none",
+        metadata={"help": "PEFT type. Set to \"none\" to disable PEFT.", "choices": PEFT_TYPES}
+    )
     lora_r: int = field(default=8, metadata={"help": "LoRA attention dimension (rank)."})
     lora_alpha: int = field(default=16, metadata={"help": "LoRA alpha."})
     lora_dropout: float = field(default=0.05, metadata={"help": "LoRA dropout."})
     lora_on_all_modules: bool = field(
         default=False,
-        metadata={"help": "Whether to apply LoRA on all supported layers and track gradient for all non-LoRA layers."}
+        metadata={"help": "Whether to apply LoRA on all supported layers."}
     )
     lora_target_modules: Optional[List[str]] = field(
         default=None,

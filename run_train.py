@@ -227,7 +227,7 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
         # patch models that do not support `use_flash_attention_2`
         add_flash_attention(model)
 
-    if model_args.use_lora:
+    if model_args.peft_type == "lora":
         if model_args.lora_on_all_modules:
             from src.peft_utils import LORA_LAYER_TYPES
 
@@ -255,15 +255,16 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
         model = get_peft_model(model, peft_config)
         model.print_trainable_parameters()
 
-        if model_args.lora_on_all_modules:
-            from peft.tuners.lora import LoraLayer
-
-            # enable gradient for non-LoRA layers
-            lora_layer_prefixes = tuple({n for n, m in model.named_modules() if isinstance(m, LoraLayer)})
-
-            for n, p in model.named_parameters():
-                if not n.startswith(lora_layer_prefixes):
-                    p.requires_grad = True
+        # TODO: support saving non-LoRA when `lora_on_all_modules=True`
+        # if model_args.lora_on_all_modules:
+        #     from peft.tuners.lora import LoraLayer
+        #
+        #     # enable gradient for non-LoRA layers
+        #     lora_layer_prefixes = tuple({n for n, m in model.named_modules() if isinstance(m, LoraLayer)})
+        #
+        #     for n, p in model.named_parameters():
+        #         if not n.startswith(lora_layer_prefixes):
+        #             p.requires_grad = True
 
     if torch_dtype is not None:
         logging.info(f"Loading model in {model_args.model_dtype}.")

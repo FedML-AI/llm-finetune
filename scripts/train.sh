@@ -20,7 +20,7 @@ python3 run_train.py \
   --seed 1234 \
   --fp16 "False" \
   --bf16 "False" \
-  --use_lora "True" \
+  --peft_type "lora" \
   --gradient_checkpointing "True" \
   --per_device_train_batch_size 8 \
   --per_device_eval_batch_size 8 \

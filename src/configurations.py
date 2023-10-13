@@ -23,8 +23,14 @@ from .utils import is_directory, is_file
 
 @dataclass
 class ModelArguments:
-    model_name_or_path: str = field(default="EleutherAI/pythia-70m", metadata={"help": "model name or path."})
-    model_dtype: Optional[str] = field(default=None, metadata={"help": "model dtype.", "choices": MODEL_DTYPES})
+    model_name_or_path: str = field(default="EleutherAI/pythia-70m", metadata={"help": "Model name or path."})
+    model_dtype: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Model data type. Set to \"none\" to use the default data type.",
+            "choices": MODEL_DTYPES,
+        }
+    )
     peft_type: str = field(
         default="none",
         metadata={"help": "PEFT type. Set to \"none\" to disable PEFT.", "choices": PEFT_TYPES}
@@ -46,18 +52,16 @@ class ModelArguments:
     )
     auth_token: Optional[str] = field(
         default=None,
-        metadata={
-            "help": "Authentication token for Hugging Face private models such as Llama 2.",
-        }
+        metadata={"help": "Authentication token for Hugging Face private models such as Llama 2."}
     )
-    load_pretrained: bool = field(default=True, metadata={"help": "Whether to load pretrained model."})
+    load_pretrained: bool = field(default=True, metadata={"help": "Whether to load pretrained model weights."})
     use_flash_attention: bool = field(default=False, metadata={"help": "Whether to use flash attention."})
 
     def __post_init__(self) -> None:
         if is_file(self.model_name_or_path):
             if self.load_pretrained:
                 raise ValueError(
-                    "\"model_name_or_path\" must be a model ID or directory path if \"load_pretrained\" is `True`."
+                    "`model_name_or_path` must be a model ID or directory path if `load_pretrained=True`."
                 )
 
         elif not is_directory(self.model_name_or_path):
@@ -66,8 +70,8 @@ class ModelArguments:
                 model_names_str = "', '".join(MODEL_NAMES)
 
                 raise ValueError(
-                    f"\"model_name_or_path\" must be a valid file/directory path or a supported model ID ("
-                    f"choose from '{model_names_str}') but received \"{self.model_name_or_path}\"."
+                    f"`model_name_or_path` must be a valid file/directory path or a supported model ID"
+                    f" (choose from '{model_names_str}') but received \"{self.model_name_or_path}\"."
                 )
 
             if self.model_name_or_path.startswith("meta-llama/Llama-2-"):
@@ -90,7 +94,7 @@ class ModelArguments:
                         f"\nTo pass a token, you could pass `--auth_token \"<your token>\"` or set environment"
                         f" variable `HUGGING_FACE_HUB_TOKEN=\"${{your_token}}\"`."
                         f"\nTo login, use `huggingface-cli login` or `huggingface_hub.login`."
-                        f" See https://huggingface.co/settings/tokens."
+                        f" See https://huggingface.co/settings/tokens for detail."
                     )
 
         if self.model_dtype is not None:
@@ -205,7 +209,7 @@ class DatasetArguments:
 
         elif len(self.dataset_path) <= 0:
             # if dataset_name is None
-            raise ValueError("\"dataset_name\" and \"dataset_path\" cannot both be empty.")
+            raise ValueError("`dataset_name` and `dataset_path` cannot both be empty.")
 
         elif len(self.dataset_path) > 2:
             warnings.warn("More than 2 dataset paths provided. Only the first 2 will be loaded.")
@@ -243,7 +247,7 @@ class DatasetArguments:
             raise ValueError("`remove_long_seq` is not compatible with `tokenize_on_the_fly`")
 
         if self.remove_long_seq and not self.truncate_long_seq:
-            warnings.warn("\"truncate_long_seq\" is set to `True` since \"remove_long_seq\" is `True`.")
+            warnings.warn("`truncate_long_seq` is set to \"True\" since `remove_long_seq` is \"True\".")
             self.truncate_long_seq = True
 
         if self.dataset_num_proc is not None and self.dataset_num_proc <= 0:

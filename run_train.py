@@ -1,4 +1,4 @@
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Sized, Tuple, Union
 
 from datetime import timedelta
 import logging
@@ -6,7 +6,7 @@ from pathlib import Path
 from timeit import default_timer as timer
 
 from accelerate.utils import compare_versions
-from datasets import load_dataset
+from datasets import IterableDataset, IterableDatasetDict, load_dataset
 from peft import (
     get_peft_model,
     LoraConfig,
@@ -42,7 +42,7 @@ def preprocess_dataset(
             "output": "response",
         })
 
-    remove_columns = list({"text", *dataset.column_names})
+    remove_columns = {"text", *dataset.column_names}
     if "text" not in dataset.column_names:
         dataset = dataset.map(get_prompt_formatter(dataset_args.prompt_style))
     dataset = dataset.map(get_keyword_replacer())
@@ -51,22 +51,40 @@ def preprocess_dataset(
         truncation=dataset_args.truncate_long_seq,
         max_length=dataset_args.truncation_max_length,
     )
+    dataset_kwargs = {}
+    if not isinstance(dataset, IterableDataset):
+        dataset_kwargs["num_proc"] = dataset_args.dataset_num_proc
 
-    logging.info(f"preprocessing dataset")
-    dataset = dataset.map(
-        lambda batch: tokenizer(batch["text"], **tokenization_kwargs),
-        batched=True,
-        remove_columns=remove_columns
-    )
+    def encode(batch):
+        return tokenizer(batch["text"], **tokenization_kwargs)
+
+    if dataset_args.tokenize_on_the_fly:
+        if dataset_args.remove_long_seq:
+            raise ValueError("`remove_long_seq` is not compatible with `tokenize_on_the_fly`")
+
+        dataset = dataset.remove_columns(list(remove_columns - {"text"}))
+        dataset.set_transform(encode)
+
+    else:
+        logging.info(f"preprocessing dataset")
+        dataset = dataset.map(
+            encode,
+            batched=True,
+            remove_columns=list(remove_columns),
+            **dataset_kwargs
+        )
+
+    if isinstance(dataset, Sized):
+        logging.info(f"dataset has {len(dataset):,} rows")
 
     if dataset_args.remove_long_seq and dataset_args.max_seq_length is not None:
-        dataset = dataset.filter(lambda rec: len(rec["input_ids"]) <= dataset_args.max_seq_length)
+        dataset = dataset.filter(
+            lambda rec: len(rec["input_ids"]) <= dataset_args.max_seq_length,
+            **dataset_kwargs
+        )
 
-        if hasattr(dataset, "num_rows"):
-            logging.info(f"dataset has {dataset.num_rows:,} rows after filtering for truncated records")
-
-    if hasattr(dataset, "num_rows"):
-        logging.info(f"dataset has {dataset.num_rows:,} rows")
+        if isinstance(dataset, Sized):
+            logging.info(f"dataset has {len(dataset):,} rows after filtering for truncated records")
 
     return dataset
 
@@ -76,7 +94,7 @@ def get_dataset(
         tokenizer: TokenizerType,
         seed: Optional[int] = None,
         is_local_main_process: bool = True
-) -> Tuple[DatasetType, DatasetType]:
+) -> Tuple[DatasetType, DatasetType, DatasetType]:
     dataset_kwargs = dict(
         path="json",
         name=dataset_args.dataset_config_name,
@@ -88,7 +106,10 @@ def get_dataset(
         dataset_kwargs["data_files"] = None
 
     elif len(dataset_args.dataset_path) >= 2:
-        dataset_kwargs["data_files"] = {"train": dataset_args.dataset_path[0], "test": dataset_args.dataset_path[1]}
+        dataset_kwargs["data_files"] = {
+            "train": dataset_args.dataset_path[0],
+            "test": dataset_args.dataset_path[1],
+        }
 
     elif len(dataset_args.dataset_path) == 0:
         raise ValueError("\"dataset_name\" and \"dataset_path\" cannot both be empty.")
@@ -97,15 +118,25 @@ def get_dataset(
         dataset_kwargs["data_files"] = dataset_args.dataset_path
 
     dataset_dict = load_dataset(**dataset_kwargs)
-    if dataset_args.cleanup_data_cache and is_local_main_process:
+    if (
+            dataset_args.cleanup_data_cache and
+            is_local_main_process and
+            not isinstance(dataset_dict, IterableDatasetDict)
+    ):
         # only cleanup cache on local main process (i.e. local_rank == 0)
         dataset_dict.cleanup_cache_files()
     if len(dataset_dict.keys()) == 1:
+        if dataset_args.test_size is None:
+            raise ValueError(
+                "The dataset only has 1 split. A positive `test_dataset_ratio` or `test_dataset_size`"
+                " is required."
+            )
+
         dataset = preprocess_dataset(dataset_args, dataset_dict["train"], tokenizer)
 
         logging.info("splitting dataset")
         dataset_dict = dataset.train_test_split(
-            test_size=dataset_args.test_dataset_size,
+            test_size=dataset_args.test_size,
             shuffle=True,
             seed=seed
         )
@@ -118,11 +149,20 @@ def get_dataset(
 
     logging.info(f"done preprocessing")
 
-    if hasattr(train_dataset, "num_rows"):
-        logging.info(f"Train data size: {train_dataset.num_rows:,}")
-    if hasattr(test_dataset, "num_rows"):
-        logging.info(f"Test data size: {test_dataset.num_rows:,}")
-    return train_dataset, test_dataset
+    if dataset_args.eval_dataset_size <= 0:
+        eval_dataset = test_dataset
+    elif isinstance(test_dataset, IterableDataset):
+        eval_dataset = test_dataset.take(dataset_args.eval_dataset_size)
+    else:
+        eval_dataset = test_dataset.select(range(min(len(test_dataset), dataset_args.eval_dataset_size)))
+
+    if isinstance(train_dataset, Sized):
+        logging.info(f"Train dataset size: {len(train_dataset):,}")
+    if isinstance(eval_dataset, Sized):
+        logging.info(f"Eval dataset size: {len(eval_dataset):,}")
+    if isinstance(test_dataset, Sized):
+        logging.info(f"Test dataset size: {len(test_dataset):,}")
+    return train_dataset, test_dataset, eval_dataset
 
 
 def get_tokenizer(model_args: ModelArguments, **kwargs) -> TokenizerType:
@@ -265,7 +305,7 @@ def train() -> None:
 
     # dataset
     with training_args.main_process_first():
-        train_dataset, test_dataset = get_dataset(
+        train_dataset, test_dataset, eval_dataset = get_dataset(
             dataset_args=dataset_args,
             tokenizer=tokenizer,
             seed=training_args.seed,
@@ -277,7 +317,7 @@ def train() -> None:
         tokenizer=tokenizer,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=test_dataset,
+        eval_dataset=eval_dataset,
         data_collator=get_data_collator(
             tokenizer,
             response_template=dataset_args.response_template,
@@ -309,7 +349,7 @@ def train() -> None:
 
     if training_args.do_eval:
         logging.info("Evaluating")
-        logging.info(trainer.evaluate())
+        logging.info(trainer.evaluate(test_dataset))
 
 
 if __name__ == '__main__':

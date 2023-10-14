@@ -10,11 +10,27 @@ MASTER_PORT="${2:-12355}"
 NUM_NODES="${3:-1}"
 NUM_GPU="$(python3 -c "import torch; print(torch.cuda.device_count())")"
 
+CMD=(
+  --master_addr="${MASTER_ADDR}"
+  --master_port="${MASTER_PORT}"
+)
+if [[ -z "${CUDA_VISIBLE_DEVICES+x}" ]]; then
+  # when `CUDA_VISIBLE_DEVICES` is not specified, use all GPUs by setting `--num_nodes`
+  CMD+=(
+    --num_nodes="${NUM_NODES}"
+    --num_gpus="${NUM_GPU}"
+  )
+else
+  # see https://github.com/microsoft/DeepSpeed/issues/662
+  # use `--include` to select GPUs and unset `CUDA_VISIBLE_DEVICES`
+  CMD+=(
+    --include="${MASTER_ADDR}:${CUDA_VISIBLE_DEVICES}"
+  )
+  unset CUDA_VISIBLE_DEVICES
+fi
+
 deepspeed \
-  --num_nodes="${NUM_NODES}" \
-  --num_gpus="${NUM_GPU}" \
-  --master_addr="${MASTER_ADDR}" \
-  --master_port="${MASTER_PORT}" \
+  "${CMD[@]}" \
   run_train.py \
   --deepspeed "configs/deepspeed/ds_z3_bf16_config.json" \
   --model_name_or_path "EleutherAI/pythia-70m" \

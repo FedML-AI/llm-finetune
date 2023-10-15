@@ -14,10 +14,15 @@ def _is_package_available(package_name: str) -> bool:
     return importlib.util.find_spec(package_name) is not None
 
 
+def is_fedml_available() -> bool:
+    return _fedml_available
+
+
 def is_flash_attn_available() -> bool:
     import torch.cuda
 
     return _flash_attn_available and torch.cuda.is_available()
 
 
+_fedml_available = _is_package_available("fedml")
 _flash_attn_available = _is_package_available("flash_attn")

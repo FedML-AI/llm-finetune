@@ -118,6 +118,7 @@ def apply_prompt_template(sample: T, template_func: Callable[[MutableMapping[str
 DEFAULT_KEYWORD_REPLACEMENTS = {
     # for "lavita/ChatDoctor-HealthCareMagic-100k"
     "Chat Doctor": "AI Assistant",
+    "ChatDoctor": "AI Assistant",
 }
 
 

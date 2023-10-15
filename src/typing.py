@@ -5,6 +5,8 @@ from os import PathLike
 from datasets import Dataset, IterableDataset
 from peft import PeftModel, PeftConfig
 import torch
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
 from transformers import (
     DataCollatorForLanguageModeling,
     PreTrainedModel,
@@ -17,8 +19,10 @@ __all__ = [
     "DatasetType",
     "is_model_config_type",
     "is_model_type",
+    "LrSchedulerType",
     "ModelConfigType",
     "ModelType",
+    "OptimizerType",
     "PathType",
     "to_torch_dtype",
     "TokenizerType",
@@ -28,9 +32,13 @@ PathType = Union[str, PathLike]
 
 DataCollatorType = TypeVar("DataCollatorType", bound=DataCollatorForLanguageModeling)
 DatasetType = Union[Dataset, IterableDataset]
+
 ModelConfigType = TypeVar("ModelConfigType", bound=Union[PretrainedConfig, PeftConfig])
 ModelType = TypeVar("ModelType", bound=Union[PreTrainedModel, PeftModel])
 TokenizerType = TypeVar("TokenizerType", bound=PreTrainedTokenizerBase)
+
+OptimizerType = Optimizer
+LrSchedulerType = Union[LambdaLR, ReduceLROnPlateau]
 
 TORCH_DTYPE_ALIAS_MAPPING = {
     "bf16": "bfloat16",

@@ -125,6 +125,7 @@ def get_dataset(
     ):
         # only cleanup cache on local main process (i.e. local_rank == 0)
         dataset_dict.cleanup_cache_files()
+
     if len(dataset_dict.keys()) == 1:
         if dataset_args.test_size is None:
             raise ValueError(
@@ -317,6 +318,8 @@ def train() -> None:
         model=model,
         tokenizer=tokenizer,
         args=training_args,
+        model_args=model_args,
+        dataset_args=dataset_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=get_data_collator(

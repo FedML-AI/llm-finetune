@@ -12,6 +12,7 @@ from peft import (
     LoraConfig,
     TaskType,
 )
+import torch
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, TrainingArguments
 
 from src.configurations import DatasetArguments, ModelArguments
@@ -177,10 +178,12 @@ def get_tokenizer(model_args: ModelArguments, **kwargs) -> TokenizerType:
     return tokenizer
 
 
-def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None, **kwargs) -> ModelType:
-    kwargs.setdefault("trust_remote_code", True)
-    torch_dtype = kwargs.pop("torch_dtype", model_args.torch_dtype)
-
+def get_base_model(
+        model_args: ModelArguments,
+        tokenizer_length: Optional[int] = None,
+        torch_dtype: Optional[torch.dtype] = None,
+        **kwargs
+) -> ModelType:
     config = AutoConfig.from_pretrained(model_args.model_name_or_path, torch_dtype=torch_dtype, **kwargs)
     model_cls = get_model_class_from_config(config, **kwargs)
 
@@ -189,7 +192,7 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
             compare_versions("transformers", ">=", "4.34.0")
             and getattr(model_cls, "_supports_flash_attn_2", False)
     ):
-        # starting from transformers v4.34.0, some HF models support flash attention v2
+        # starting from transformers v4.34.0, several hugging face models support flash attention v2
         # only enable `use_flash_attention_2` flag for supported models; other models will be
         # patched by `add_flash_attention`
         # see https://github.com/huggingface/transformers/issues/26350
@@ -199,7 +202,7 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
     if model_args.load_pretrained:
         kwargs.setdefault("low_cpu_mem_usage", not is_deepspeed_zero3_enabled())
 
-        model = AutoModelForCausalLM.from_pretrained(
+        model: ModelType = AutoModelForCausalLM.from_pretrained(
             model_args.model_name_or_path,
             torch_dtype=torch_dtype,
             **kwargs
@@ -207,6 +210,7 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
     else:
         if use_transformers_flash_attn:
             # As of transformers v4.34.0, `AutoModel.from_config` does not support `use_flash_attention_2` flag
+            # enable `use_flash_attention_2` manually
             config = model_cls._check_and_enable_flash_attn_2(
                 config,
                 torch_dtype=torch_dtype,
@@ -214,7 +218,7 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
             )
 
         # see https://discuss.huggingface.co/t/how-to-load-model-without-pretrained-weight/34155/3
-        model = AutoModelForCausalLM.from_config(config, torch_dtype=torch_dtype)
+        model: ModelType = AutoModelForCausalLM.from_config(config, torch_dtype=torch_dtype)
 
     model_vocab_size = get_vocab_size(model.config)
     if tokenizer_length is not None and model_vocab_size < tokenizer_length:
@@ -227,6 +231,15 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
     if model_args.use_flash_attention and not use_transformers_flash_attn:
         # patch models that do not support `use_flash_attention_2`
         add_flash_attention(model)
+
+    return model
+
+
+def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None, **kwargs) -> ModelType:
+    kwargs.setdefault("trust_remote_code", True)
+    torch_dtype = kwargs.pop("torch_dtype", model_args.torch_dtype)
+
+    model = get_base_model(model_args, tokenizer_length, torch_dtype, **kwargs)
 
     if model_args.peft_type == "lora":
         if model_args.lora_on_all_modules:
@@ -256,7 +269,7 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
         model = get_peft_model(model, peft_config)
         model.print_trainable_parameters()
 
-        # TODO: support saving non-LoRA when `lora_on_all_modules=True`
+        # TODO: support non-LoRA module saving when `lora_on_all_modules=True`
         # if model_args.lora_on_all_modules:
         #     from peft.tuners.lora import LoraLayer
         #
@@ -268,7 +281,8 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
         #             p.requires_grad = True
 
     if torch_dtype is not None:
-        logging.info(f"Loading model in {model_args.model_dtype}.")
+        # convert PEFT weights to `torch_dtype`
+        logging.info(f"Loading model in {torch_dtype}.")
         model.to(torch_dtype)
         model.config.torch_dtype = torch_dtype
 
@@ -306,7 +320,7 @@ def train() -> None:
         dataset_args.max_seq_length = get_max_seq_length(model)
 
     # dataset
-    with training_args.main_process_first():
+    with training_args.main_process_first(local=True):
         train_dataset, test_dataset, eval_dataset = get_dataset(
             dataset_args=dataset_args,
             tokenizer=tokenizer,

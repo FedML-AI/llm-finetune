@@ -10,16 +10,20 @@ from typing import (
     Union,
 )
 
+from argparse import Namespace
 import os
 from pathlib import Path
 import shutil
 
-from fedml.arguments import Arguments
 import torch.cuda
 from transformers import HfArgumentParser
 from peft import PeftModel, PromptLearningConfig
 
+from .integrations import is_fedml_available
 from .typing import ModelType, PathType
+
+if is_fedml_available():
+    from fedml.arguments import Arguments
 
 T = TypeVar("T")
 
@@ -92,7 +96,7 @@ def save_config(model: ModelType, output_dir: PathType) -> None:
 
 def parse_hf_args(
         dataclass_types: Union[Type[T], Iterable[Type[T]]],
-        args: Optional[Union[Sequence[str], Arguments, Dict[str, Any]]] = None,
+        args: Optional[Union[Sequence[str], Namespace, Dict[str, Any], "Arguments"]] = None,
         parser_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
 ) -> Tuple[T, ...]:
@@ -104,18 +108,22 @@ def parse_hf_args(
     if args is None or isinstance(args, Sequence):
         return parser.parse_args_into_dataclasses(args=args, **kwargs)
 
-    elif isinstance(args, Arguments):
+    elif isinstance(args, Namespace):
+        args_dict = dict(args.__dict__)
+
+    elif isinstance(args, dict):
+        args_dict = args
+
+    elif is_fedml_available() and isinstance(args, Arguments):
         args_dict = dict(args.__dict__)
         if not getattr(args, "using_gpu", True) or torch.cuda.device_count() == 1:
+            # If not using GPU or not having more than one GPUs
             args_dict.pop("local_rank", None)
             args_dict.pop("device", None)
 
         if "client_optimizer" in args_dict:
             # if contains `client_optimizer` and `optim` is not set, use `client_optimizer`
             args_dict.setdefault("optim", args_dict["client_optimizer"])
-
-    elif isinstance(args, dict):
-        args_dict = args
 
     else:
         raise TypeError(f"{type(args)} is not a supported type")

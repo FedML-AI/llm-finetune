@@ -12,7 +12,8 @@ from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
 from .configurations import DatasetArguments, ModelArguments
 from .distributed import barrier
-from .trainer_callback import HFWandbCallback
+from .integrations import is_fedml_available
+from .trainer_callback import FedMLCallback, HFWandbCallback
 from .typing import (
     DataCollatorType,
     DatasetType,
@@ -57,6 +58,9 @@ class HFTrainer(Trainer):
         )
         self.model_args = model_args
         self.dataset_args = dataset_args
+
+        if is_fedml_available():
+            self.add_callback(FedMLCallback)
 
         # replace WandbCallback if exist
         self.replace_callback(

@@ -7,8 +7,10 @@ import warnings
 from accelerate.utils import compare_versions
 from datasets import get_dataset_split_names
 import torch
+from transformers import TrainingArguments
 
 from .constants import (
+    CUSTOM_LOGGERS,
     DATASET_NAMES,
     MODEL_DTYPES,
     MODEL_DTYPE_MAPPING,
@@ -19,6 +21,21 @@ from .constants import (
 from .dataset_utils import RESPONSE_KEY, RESPONSE_KEY_NL
 from .typing import to_torch_dtype
 from .utils import is_directory, is_file
+
+
+@dataclass
+class ExperimentArguments(TrainingArguments):
+    custom_logger: List[str] = field(
+        default_factory=list,
+        metadata={
+            "help": "The list of customized logger to report the results and logs to.",
+            "choices": CUSTOM_LOGGERS,
+            "nargs": "+",
+        }
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
 
 
 @dataclass

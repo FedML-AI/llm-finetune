@@ -6,11 +6,11 @@ import shutil
 
 from torch import Tensor
 from torch.nn import Module
-from transformers import EvalPrediction, Trainer, TrainerCallback, TrainingArguments
+from transformers import EvalPrediction, Trainer, TrainerCallback
 from transformers.integrations import WandbCallback
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
-from .configurations import DatasetArguments, ModelArguments
+from .configurations import DatasetArguments, ExperimentArguments, ModelArguments
 from .distributed import barrier
 from .integrations import is_fedml_available
 from .trainer_callback import FedMLCallback, HFWandbCallback
@@ -30,7 +30,7 @@ class HFTrainer(Trainer):
     def __init__(
             self,
             model: Union[ModelType, Module] = None,
-            args: TrainingArguments = None,
+            args: ExperimentArguments = None,
             model_args: ModelArguments = None,
             dataset_args: DatasetArguments = None,
             data_collator: Optional[DataCollatorType] = None,
@@ -59,7 +59,7 @@ class HFTrainer(Trainer):
         self.model_args = model_args
         self.dataset_args = dataset_args
 
-        if is_fedml_available():
+        if is_fedml_available() and "fedml" in args.custom_logger:
             self.add_callback(FedMLCallback)
 
         # replace WandbCallback if exist

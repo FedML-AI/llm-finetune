@@ -57,3 +57,7 @@ MODEL_DTYPE_MAPPING = {
     "none": None,
 }
 MODEL_DTYPES = list(MODEL_DTYPE_MAPPING.keys())
+
+CUSTOM_LOGGERS = [
+    "fedml",
+]

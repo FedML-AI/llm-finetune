@@ -104,6 +104,8 @@ class HFTrainer(Trainer):
 
         if should_save_temp_ckpt:
             self._save_checkpoint(model_wrapped, trial=None)
+            # TODO: verify
+            self.control = self.callback_handler.on_save(self.args, self.state, self.control)
 
         with self.args.main_process_first(local=self.args.save_on_each_node):
             if self.args.should_save:

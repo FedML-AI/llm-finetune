@@ -31,8 +31,6 @@ class HFTrainer(Trainer):
             self,
             model: Union[ModelType, Module] = None,
             args: ExperimentArguments = None,
-            model_args: ModelArguments = None,
-            dataset_args: DatasetArguments = None,
             data_collator: Optional[DataCollatorType] = None,
             train_dataset: Optional[DatasetType] = None,
             eval_dataset: Optional[Union[DatasetType, Dict[str, DatasetType]]] = None,
@@ -56,17 +54,9 @@ class HFTrainer(Trainer):
             optimizers=optimizers,
             preprocess_logits_for_metrics=preprocess_logits_for_metrics
         )
-        self.model_args = model_args
-        self.dataset_args = dataset_args
 
         if is_fedml_available() and "fedml" in args.custom_logger:
             self.add_callback(FedMLCallback)
-
-        # replace WandbCallback if exist
-        self.replace_callback(
-            old_callback=WandbCallback,
-            new_callback=HFWandbCallback(model_args=self.model_args, dataset_args=self.dataset_args)
-        )
 
     def log(self, logs: Dict[str, float]) -> None:
         # Adapted from https://github.com/huggingface/transformers/blob/b71f20a7c9f3716d30f6738501559acf863e2c5c/examples/pytorch/language-modeling/run_clm.py#L630-L634

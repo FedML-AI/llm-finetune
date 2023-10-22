@@ -333,8 +333,6 @@ def train() -> None:
         model=model,
         tokenizer=tokenizer,
         args=training_args,
-        model_args=model_args,
-        dataset_args=dataset_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=get_data_collator(

@@ -13,9 +13,9 @@ from peft import (
     TaskType,
 )
 import torch
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
-from src.configurations import DatasetArguments, ModelArguments
+from src.configurations import DatasetArguments, ExperimentArguments, ModelArguments
 from src.constants import DEFAULT_MAX_SEQ_LENGTH
 from src.dataset_utils import get_keyword_replacer, get_prompt_formatter
 from src.hf_trainer import HFTrainer
@@ -307,7 +307,7 @@ def get_max_seq_length(
 
 def train() -> None:
     # configs
-    model_args, dataset_args, training_args = parse_hf_args((ModelArguments, DatasetArguments, TrainingArguments))
+    model_args, dataset_args, training_args = parse_hf_args((ModelArguments, DatasetArguments, ExperimentArguments))
 
     # prepare models
     logging.info(f"Loading tokenizer for \"{model_args.model_name_or_path}\"")

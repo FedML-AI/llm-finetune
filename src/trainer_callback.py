@@ -1,10 +1,9 @@
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Mapping, Optional
 
-from dataclasses import fields, is_dataclass
+from dataclasses import is_dataclass
 import os
 from pathlib import Path
 
-from torch import Tensor
 from torch.nn import Module
 from transformers import TrainerCallback, TrainerState, TrainingArguments, TrainerControl
 from transformers.integrations import WandbCallback
@@ -12,25 +11,7 @@ from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
 from .integrations import is_fedml_available
 from .typing import PathType
-
-
-# Adapted from `transformers.training_args.TrainingArguments.to_dict`
-def dataclass_to_dict(dataclass_obj) -> Dict[str, Any]:
-    d = {f.name: getattr(dataclass_obj, f.name) for f in fields(dataclass_obj) if f.init}
-
-    for k, v in d.items():
-        if k.endswith("_token"):
-            d[k] = f"<{k.upper()}>"
-
-    return d
-
-
-# Adapted from `transformers.training_args.TrainingArguments.to_sanitized_dict`
-def dataclass_to_sanitized_dict(dataclass_obj) -> Dict[str, Any]:
-    d = dataclass_to_dict(dataclass_obj)
-
-    valid_types = [bool, int, float, str, Tensor]
-    return {k: v if type(v) in valid_types else str(v) for k, v in d.items()}
+from .utils import dataclass_to_sanitized_dict
 
 
 class HFWandbCallback(WandbCallback):

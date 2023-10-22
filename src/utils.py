@@ -2,6 +2,7 @@ from typing import (
     Any,
     Dict,
     Iterable,
+    Mapping,
     Optional,
     Sequence,
     Tuple,
@@ -11,11 +12,13 @@ from typing import (
 )
 
 from argparse import Namespace
+from dataclasses import fields
 import os
 from pathlib import Path
 import shutil
 
 import torch.cuda
+from torch import Tensor
 from transformers import HfArgumentParser
 from peft import PeftModel, PromptLearningConfig
 
@@ -130,3 +133,24 @@ def parse_hf_args(
 
     kwargs.setdefault("allow_extra_keys", True)
     return parser.parse_dict(args_dict, **kwargs)
+
+
+# Adapted from `transformers.training_args.TrainingArguments.to_dict`
+def dataclass_to_dict(dataclass_obj) -> Dict[str, Any]:
+    d = {f.name: getattr(dataclass_obj, f.name) for f in fields(dataclass_obj) if f.init}
+
+    for k, v in d.items():
+        if k.endswith("_token"):
+            d[k] = f"<{k.upper()}>"
+
+    return d
+
+
+# Adapted from `transformers.training_args.TrainingArguments.to_sanitized_dict`
+def dataclass_to_sanitized_dict(dataclass_obj) -> Dict[str, Any]:
+    return to_sanitized_dict(dataclass_to_dict(dataclass_obj))
+
+
+def to_sanitized_dict(d: Mapping[str, Any]) -> Dict[str, Any]:
+    valid_types = [bool, int, float, str, Tensor]
+    return {k: v if type(v) in valid_types else str(v) for k, v in d.items()}

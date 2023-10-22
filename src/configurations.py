@@ -35,6 +35,11 @@ class ExperimentArguments(TrainingArguments):
     )
 
     def __post_init__(self):
+        if "none" in self.custom_logger:
+            self.custom_logger = []
+        elif "all" in self.custom_logger:
+            self.custom_logger = [l for l in CUSTOM_LOGGERS if l not in ("all", "none")]
+
         super().__post_init__()
 
 

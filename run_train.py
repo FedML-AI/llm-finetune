@@ -308,6 +308,7 @@ def get_max_seq_length(
 def train() -> None:
     # configs
     model_args, dataset_args, training_args = parse_hf_args((ModelArguments, DatasetArguments, ExperimentArguments))
+    training_args.add_and_verify_args(model_args, dataset_args)
 
     # prepare models
     logging.info(f"Loading tokenizer for \"{model_args.model_name_or_path}\"")

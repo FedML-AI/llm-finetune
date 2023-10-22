@@ -1,6 +1,6 @@
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Union
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, is_dataclass
 import os
 import warnings
 
@@ -20,7 +20,7 @@ from .constants import (
 )
 from .dataset_utils import RESPONSE_KEY, RESPONSE_KEY_NL
 from .typing import to_torch_dtype
-from .utils import is_directory, is_file
+from .utils import dataclass_to_dict, is_directory, is_file, to_sanitized_dict
 
 
 @dataclass
@@ -33,6 +33,23 @@ class ExperimentArguments(TrainingArguments):
             "nargs": "+",
         }
     )
+    # optional
+    model_args: Optional["ModelArguments"] = field(
+        default=None,
+        init=False,
+        metadata={
+            "help": "Reference to the `ModelArguments` object. This should be added by calling "
+                    "`add_and_verify_model_args`"
+        }
+    )
+    dataset_args: Optional["DatasetArguments"] = field(
+        default=None,
+        init=False,
+        metadata={
+            "help": "Reference to the `DatasetArguments` object. This should be added by calling "
+                    "`add_and_verify_dataset_args`"
+        }
+    )
 
     def __post_init__(self):
         if "none" in self.custom_logger:
@@ -41,6 +58,52 @@ class ExperimentArguments(TrainingArguments):
             self.custom_logger = [l for l in CUSTOM_LOGGERS if l not in ("all", "none")]
 
         super().__post_init__()
+
+    def to_dict(self) -> Dict[str, Any]:
+        d = super().to_dict()
+
+        if is_dataclass(self.model_args):
+            d["model_args"] = dataclass_to_dict(self.model_args)
+
+        if is_dataclass(self.dataset_args):
+            d["dataset_args"] = dataclass_to_dict(self.dataset_args)
+
+        return d
+
+    def to_sanitized_dict(self) -> Dict[str, Any]:
+        d = super().to_sanitized_dict()
+
+        model_args_dict = d.get("model_args", None)
+        if isinstance(model_args_dict, Mapping):
+            d["model_args"] = to_sanitized_dict(model_args_dict)
+
+        dataset_args_dict = d.get("dataset_args", None)
+        if isinstance(dataset_args_dict, Mapping):
+            d["dataset_args"] = to_sanitized_dict(dataset_args_dict)
+
+        return d
+
+    def add_and_verify_args(self, *args: Any) -> None:
+        for args_obj in args:
+            if isinstance(args_obj, ModelArguments):
+                self.add_and_verify_model_args(args_obj)
+
+            elif isinstance(args_obj, DatasetArguments):
+                self.add_and_verify_dataset_args(args_obj)
+
+            else:
+                raise TypeError(f"{type(args_obj)} is not a supported args type.")
+
+    def add_and_verify_model_args(self, model_args: "ModelArguments") -> None:
+        self.model_args = model_args
+
+    def add_and_verify_dataset_args(self, dataset_args: "DatasetArguments") -> None:
+        if dataset_args.tokenize_on_the_fly and self.remove_unused_columns:
+            # See https://github.com/huggingface/datasets/issues/1867
+            warnings.warn(f"When tokenizing on-the-fly, need to disable `remove_unused_columns`.")
+            self.remove_unused_columns = False
+
+        self.dataset_args = dataset_args
 
 
 @dataclass

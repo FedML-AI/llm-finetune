@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Callable, Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
 
 import math
 from pathlib import Path
@@ -7,13 +7,12 @@ import shutil
 from torch import Tensor
 from torch.nn import Module
 from transformers import EvalPrediction, Trainer, TrainerCallback
-from transformers.integrations import WandbCallback
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
-from .configurations import DatasetArguments, ExperimentArguments, ModelArguments
+from .configurations import ExperimentArguments
 from .distributed import barrier
 from .integrations import is_fedml_available
-from .trainer_callback import FedMLCallback, HFWandbCallback
+from .trainer_callback import FedMLCallback
 from .typing import (
     DataCollatorType,
     DatasetType,
@@ -56,7 +55,11 @@ class HFTrainer(Trainer):
         )
 
         if is_fedml_available() and "fedml" in args.custom_logger:
-            self.add_callback(FedMLCallback)
+            self.add_callback(FedMLCallback())
+
+        # type hint
+        if TYPE_CHECKING:
+            self.args: ExperimentArguments = self.args  # noqa
 
     def log(self, logs: Dict[str, float]) -> None:
         # Adapted from https://github.com/huggingface/transformers/blob/b71f20a7c9f3716d30f6738501559acf863e2c5c/examples/pytorch/language-modeling/run_clm.py#L630-L634

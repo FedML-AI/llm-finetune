@@ -1,59 +1,13 @@
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 
-from dataclasses import is_dataclass
 import os
 from pathlib import Path
 
-from torch.nn import Module
 from transformers import TrainerCallback, TrainerState, TrainingArguments, TrainerControl
-from transformers.integrations import WandbCallback
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
 from .integrations import is_fedml_available
 from .typing import PathType
-from .utils import dataclass_to_sanitized_dict
-
-
-class HFWandbCallback(WandbCallback):
-    def __init__(
-            self,
-            additional_config: Optional[Mapping[str, Any]] = None,
-            *dataclass_objs: Any,
-            **dataclass_obj_dict: Any
-    ):
-        self._wandb = None  # set `_wandb` default value
-
-        super().__init__()
-
-        # convert/shallow copy the additional_config
-        additional_config = dict(additional_config) if additional_config is not None else dict()
-
-        # add additional keys
-        for dataclass_obj in dataclass_objs:
-            if dataclass_obj is None:
-                continue
-
-            if not is_dataclass(dataclass_obj):
-                raise TypeError(f"all input objects must be dataclasses but got {type(dataclass_obj)}")
-
-            additional_config.update(dataclass_to_sanitized_dict(dataclass_obj))
-
-        for key, dataclass_obj in dataclass_obj_dict.items():
-            if dataclass_obj is None:
-                continue
-
-            if not is_dataclass(dataclass_obj):
-                raise TypeError(f"all input objects must be dataclasses but got {type(dataclass_obj)}")
-
-            additional_config.update({key: dataclass_to_sanitized_dict(dataclass_obj)})
-
-        self.additional_config = additional_config
-
-    def setup(self, args: TrainingArguments, state: TrainerState, model: Module, **kwargs):
-        super().setup(args, state, model, **kwargs)
-
-        if self._wandb is not None and state.is_world_process_zero:
-            self._wandb.config.update(self.additional_config, allow_val_change=True)
 
 
 class FedMLCallback(TrainerCallback):

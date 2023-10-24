@@ -357,7 +357,7 @@ def train() -> None:
         logging.info("Training")
         trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
 
-        logging.info(f"Saving model to \"{training_args.output_dir}\"")
+        logging.info(f"Saving model to \"{final_output_dir}\"")
         trainer.save_checkpoint(final_output_dir)
 
     # log training time

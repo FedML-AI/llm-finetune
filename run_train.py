@@ -364,7 +364,7 @@ def train() -> None:
     end_time = timer()
     logging.info(f"[{training_args.process_index}] total training time: {timedelta(seconds=end_time - start_time)}")
 
-    if training_args.do_eval:
+    if training_args.do_predict:
         logging.info("Evaluating")
         logging.info(trainer.evaluate(test_dataset))
 

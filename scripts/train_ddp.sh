@@ -41,5 +41,6 @@ torchrun \
   --eval_accumulation_steps 4 \
   --do_train "True" \
   --do_eval "True" \
+  --do_predict "True" \
   --remove_long_seq "True" \
   "${@:4}" # skip first 3 arguments

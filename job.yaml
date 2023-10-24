@@ -1,12 +1,33 @@
+# Local directory where your source code resides.
+# It should be the relative path to this job yaml file or the absolute path.
+# If your job doesn't contain any source code, it can be empty.
 workspace: .
+
+# Running entry commands which will be executed as the job entry point.
+# If an error occurs, you should exit with a non-zero code, e.g. exit 1.
+# Otherwise, you should exit with a zero code, e.g. exit 0.
+# Support multiple lines, which can not be empty.
 job: |
+  echo "Current directory is: \"$(pwd)\"."
+  echo "Starting training job."
   bash scripts/train.sh
   echo "job finished."
+
+# Bootstrap shell commands which will be executed before running entry commands.
+# Support multiple lines, which can be empty.
 bootstrap: |
   bash configs/bootstrap.sh
   echo "Bootstrap finished."
-task_type: train
+
+task_type: train              # options: serve, train, dev-environment
+
 computing:
-  resource_type: A100-80G
-  minimum_num_gpus: 1
-  maximum_cost_per_hour: $3
+  minimum_num_gpus: 1             # minimum # of GPUs to provision
+
+  # max cost per hour of all machines for your job.
+  # E.g., if your job are assigned 2 x A100 nodes (8 GPUs), each GPU cost $1/GPU/Hour, "maximum_cost_per_hour" = 16 * $1 = $16
+  maximum_cost_per_hour: $5
+
+  allow_cross_cloud_resources: false # true, false
+  device_type: GPU              # options: GPU, CPU, hybrid
+  resource_type: A100-80G       # e.g., A100-80G, please check the resource type list by "fedml show-resource-type" or visiting URL: https://nexus.fedml.ai/accelerator_resource_type

@@ -40,5 +40,6 @@ python3 run_train.py \
   --eval_accumulation_steps 4 \
   --do_train "True" \
   --do_eval "True" \
+  --do_predict "True" \
   --remove_long_seq "True" \
   "${@}"

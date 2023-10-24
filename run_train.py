@@ -357,14 +357,14 @@ def train() -> None:
         logging.info("Training")
         trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
 
-        logging.info(f"Saving model to \"{training_args.output_dir}\"")
+        logging.info(f"Saving model to \"{final_output_dir}\"")
         trainer.save_checkpoint(final_output_dir)
 
     # log training time
     end_time = timer()
     logging.info(f"[{training_args.process_index}] total training time: {timedelta(seconds=end_time - start_time)}")
 
-    if training_args.do_eval:
+    if training_args.do_predict:
         logging.info("Evaluating")
         logging.info(trainer.evaluate(test_dataset))
 

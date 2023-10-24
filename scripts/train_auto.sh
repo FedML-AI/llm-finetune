@@ -30,6 +30,7 @@ fi
 
 "${CMD[@]}" \
   run_train.py \
+  --ddp_find_unused_parameters "False" \
   --model_name_or_path "EleutherAI/pythia-70m" \
   --dataset_name "FedML/databricks-dolly-15k-niid" \
   --seed 1234 \
@@ -55,5 +56,6 @@ fi
   --eval_accumulation_steps 4 \
   --do_train "True" \
   --do_eval "True" \
+  --do_predict "True" \
   --remove_long_seq "True" \
   "${@:4}" # skip first 3 arguments

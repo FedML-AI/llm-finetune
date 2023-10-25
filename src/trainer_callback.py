@@ -37,7 +37,11 @@ class FedMLCallback(TrainerCallback):
     ):
         if bool(self.run_id) and state.is_world_process_zero:
             logs = rewrite_logs(logs)
-            self._mlops.log_metric({**logs, "train/global_step": state.global_step})
+            self._mlops.log_metric(
+                {**logs, "train/global_step": state.global_step},
+                step=state.global_step,
+                customized_step_key="train/global_step"
+            )
 
     def on_save(
             self,

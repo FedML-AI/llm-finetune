@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from transformers import TrainerCallback, TrainerState, TrainingArguments, TrainerControl
+from transformers.integrations import rewrite_logs
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
 from .integrations import is_fedml_available
@@ -35,7 +36,8 @@ class FedMLCallback(TrainerCallback):
             **kwargs
     ):
         if bool(self.run_id) and state.is_world_process_zero:
-            self._mlops.log_metric(logs)
+            logs = rewrite_logs(logs)
+            self._mlops.log_metric({**logs, "train/global_step": state.global_step})
 
     def on_save(
             self,

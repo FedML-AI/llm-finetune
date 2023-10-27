@@ -24,6 +24,7 @@ MODEL_NAMES = [
     "meta-llama/Llama-2-70b-hf",
     "tiiuae/falcon-7b",
     "tiiuae/falcon-40b",
+    "mistralai/Mistral-7B-v0.1",
 ]
 
 DATASET_NAMES = [

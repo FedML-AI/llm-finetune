@@ -192,10 +192,7 @@ class ModelArguments:
 class DatasetArguments:
     dataset_name: Optional[str] = field(
         default=None,
-        metadata={
-            "help": "Hugging Face dataset name. If set to an non-empty string, will override `dataset_path`.",
-            "choices": [""] + DATASET_NAMES,
-        }
+        metadata={"help": "Hugging Face dataset name. If set to an non-empty string, will override `dataset_path`."}
     )
     dataset_path: List[str] = field(
         default_factory=list,
@@ -272,6 +269,12 @@ class DatasetArguments:
                     f" logic we need to clean the data cache to ensure the most up-to-date data is generated.",
         }
     )
+    # private args for easier inheritance
+    _verified_dataset_names: Tuple[str] = field(
+        default=tuple(DATASET_NAMES),
+        init=False,
+        metadata={"help": "The Hugging Face ID of the supported/verified datasets."}
+    )
 
     def __post_init__(self) -> None:
         if not bool(self.dataset_name):
@@ -281,6 +284,13 @@ class DatasetArguments:
         if bool(self.dataset_name):
             # if `dataset_name` is a valid string
             self.dataset_path = []
+
+            if self.dataset_name not in self._verified_dataset_names:
+                warnings.warn(
+                    f"`dataset_name` received an unverified dataset ID \"{self.dataset_name}\"."
+                    f" Data processing may not work on this dataset. Verified datasets are"
+                    f" '{self._verified_dataset_names}'."
+                )
 
             split_names = get_dataset_split_names(self.dataset_name, self.dataset_config_name)
             if len(split_names) <= 1 and self.test_size is None:

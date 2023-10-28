@@ -18,7 +18,6 @@ from .constants import (
     PEFT_TYPES,
     PROMPT_STYLES,
 )
-from .dataset_utils import RESPONSE_KEY, RESPONSE_KEY_NL
 from .typing import to_torch_dtype
 from .utils import dataclass_to_dict, get_real_path, is_directory, is_file, to_sanitized_dict
 
@@ -250,15 +249,15 @@ class DatasetArguments:
         metadata={"help": "Whether to tokenize the input on-the-fly."}
     )
     prompt_style: str = field(
-        default="dolly",
+        default="default",
         metadata={"help": "Prompt template style.", "choices": PROMPT_STYLES}
     )
     response_template: str = field(
-        default=RESPONSE_KEY_NL,
+        default="### Response:\n",
         metadata={
-            "help": f"The response template for instruction fine-tuning such as `{RESPONSE_KEY}`. If set to"
-                    f" a non-empty string, The response template and all text before it will not be included"
-                    f" in the loss computation.",
+            "help": f"The response template for instruction fine-tuning such as `### Response:`. If set to"
+                    f" a non-empty string, the response template and all text before it will be excluded"
+                    f" from the loss computation.",
         }
     )
     cleanup_data_cache: bool = field(
@@ -345,6 +344,10 @@ class DatasetArguments:
         if self.dataset_num_proc is not None and self.dataset_num_proc <= 0:
             warnings.warn("Received non-positive `dataset_num_proc`; fallback to CPU count.")
             self.dataset_num_proc = os.cpu_count()
+
+        if len(self.response_template) > 0 and not self.response_template.endswith("\n"):
+            # response_template should always end with newline
+            self.response_template += "\n"
 
     @property
     def test_size(self) -> Optional[Union[int, float]]:

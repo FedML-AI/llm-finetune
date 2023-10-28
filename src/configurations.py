@@ -7,7 +7,7 @@ import warnings
 from accelerate.utils import compare_versions
 from datasets import get_dataset_split_names
 import torch
-from transformers import TrainingArguments
+from transformers import AutoConfig, TrainingArguments
 
 from .constants import (
     CUSTOM_LOGGERS,
@@ -20,7 +20,7 @@ from .constants import (
 )
 from .dataset_utils import RESPONSE_KEY, RESPONSE_KEY_NL
 from .typing import to_torch_dtype
-from .utils import dataclass_to_dict, is_directory, is_file, to_sanitized_dict
+from .utils import dataclass_to_dict, get_real_path, is_directory, is_file, to_sanitized_dict
 
 
 @dataclass
@@ -108,7 +108,7 @@ class ExperimentArguments(TrainingArguments):
 
 @dataclass
 class ModelArguments:
-    model_name_or_path: str = field(default="EleutherAI/pythia-70m", metadata={"help": "Model name or path."})
+    model_name_or_path: str = field(metadata={"help": "Model name or path."})
     model_dtype: Optional[str] = field(
         default=None,
         metadata={
@@ -143,44 +143,34 @@ class ModelArguments:
     use_flash_attention: bool = field(default=False, metadata={"help": "Whether to use flash attention."})
 
     def __post_init__(self) -> None:
+        if self.auth_token is not None:
+            os.environ["HUGGING_FACE_HUB_TOKEN"] = str(self.auth_token)
+
         if is_file(self.model_name_or_path):
-            if self.load_pretrained:
-                raise ValueError(
-                    "`model_name_or_path` must be a model ID or directory path if `load_pretrained=True`."
-                )
+            raise ValueError(
+                f"`model_name_or_path` must be a valid directory path or a valid hugging face model ID"
+                f" but received a file path \"{self.model_name_or_path}\"."
+            )
 
-        elif not is_directory(self.model_name_or_path):
-            # if model_name_or_path is not a local file or directory
-            if self.model_name_or_path not in MODEL_NAMES:
-                model_names_str = "', '".join(MODEL_NAMES)
+        elif is_directory(self.model_name_or_path):
+            self.model_name_or_path = get_real_path(self.model_name_or_path)
 
-                raise ValueError(
-                    f"`model_name_or_path` must be a valid file/directory path or a supported model ID"
-                    f" (choose from '{model_names_str}') but received \"{self.model_name_or_path}\"."
-                )
+        elif self.model_name_or_path not in MODEL_NAMES:
+            # if model_name_or_path is not a local directory
+            warnings.warn(
+                f"`model_name_or_path` received an unverified model ID \"{self.model_name_or_path}\"."
+                f" You may experience unexpected behavior from the model. Verified models are '{MODEL_NAMES}'."
+            )
 
-            if self.model_name_or_path.startswith("meta-llama/Llama-2-"):
-                if compare_versions("transformers", "<", "4.31.0"):
-                    raise NotImplementedError(f"{self.model_name_or_path} requires transformers >= 4.31.0")
-
-                if self.auth_token is not None:
-                    os.environ["HUGGING_FACE_HUB_TOKEN"] = str(self.auth_token)
-
-                # need to verify if already logged in
-                from huggingface_hub import HfApi
-                from huggingface_hub.utils import LocalTokenNotFoundError
-
-                try:
-                    HfApi().whoami()
-                except LocalTokenNotFoundError:
-                    raise LocalTokenNotFoundError(
-                        f"Token is required for {self.model_name_or_path}, but no token found. You need to provide a"
-                        f" token or be logged in to Hugging Face."
-                        f"\nTo pass a token, you could pass `--auth_token \"<your token>\"` or set environment"
-                        f" variable `HUGGING_FACE_HUB_TOKEN=\"${{your_token}}\"`."
-                        f"\nTo login, use `huggingface-cli login` or `huggingface_hub.login`."
-                        f" See https://huggingface.co/settings/tokens for detail."
-                    )
+        config = AutoConfig.from_pretrained(self.model_name_or_path)
+        required_transformers_version = getattr(config, "transformers_version", None)
+        if (
+                required_transformers_version is not None and
+                compare_versions("transformers", "<", required_transformers_version)
+        ):
+            raise RuntimeError(
+                f"{self.model_name_or_path} requires `transformers` >= {required_transformers_version}"
+            )
 
         if self.model_dtype is not None:
             # convert model_dtype to canonical name

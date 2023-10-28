@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 from dataclasses import dataclass, field, is_dataclass
 import os
@@ -141,6 +141,12 @@ class ModelArguments:
     )
     load_pretrained: bool = field(default=True, metadata={"help": "Whether to load pretrained model weights."})
     use_flash_attention: bool = field(default=False, metadata={"help": "Whether to use flash attention."})
+    # private args for easier inheritance
+    _verified_model_names: Tuple[str] = field(
+        default=tuple(MODEL_NAMES),
+        init=False,
+        metadata={"help": "The Hugging Face ID of the supported/verified models."}
+    )
 
     def __post_init__(self) -> None:
         if self.auth_token is not None:
@@ -155,11 +161,12 @@ class ModelArguments:
         elif is_directory(self.model_name_or_path):
             self.model_name_or_path = get_real_path(self.model_name_or_path)
 
-        elif self.model_name_or_path not in MODEL_NAMES:
+        elif self.model_name_or_path not in self._verified_model_names:
             # if model_name_or_path is not a local directory
             warnings.warn(
                 f"`model_name_or_path` received an unverified model ID \"{self.model_name_or_path}\"."
-                f" You may experience unexpected behavior from the model. Verified models are '{MODEL_NAMES}'."
+                f" You may experience unexpected behavior from the model. Verified models are"
+                f" '{self._verified_model_names}'."
             )
 
         config = AutoConfig.from_pretrained(self.model_name_or_path)

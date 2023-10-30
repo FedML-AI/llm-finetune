@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 from dataclasses import dataclass, field, is_dataclass
 import os
@@ -18,7 +18,6 @@ from .constants import (
     PEFT_TYPES,
     PROMPT_STYLES,
 )
-from .dataset_utils import RESPONSE_KEY, RESPONSE_KEY_NL
 from .typing import to_torch_dtype
 from .utils import dataclass_to_dict, get_real_path, is_directory, is_file, to_sanitized_dict
 
@@ -141,6 +140,12 @@ class ModelArguments:
     )
     load_pretrained: bool = field(default=True, metadata={"help": "Whether to load pretrained model weights."})
     use_flash_attention: bool = field(default=False, metadata={"help": "Whether to use flash attention."})
+    # private args for easier inheritance
+    _verified_model_names: Tuple[str] = field(
+        default=tuple(MODEL_NAMES),
+        init=False,
+        metadata={"help": "The Hugging Face ID of the supported/verified models."}
+    )
 
     def __post_init__(self) -> None:
         if self.auth_token is not None:
@@ -155,11 +160,12 @@ class ModelArguments:
         elif is_directory(self.model_name_or_path):
             self.model_name_or_path = get_real_path(self.model_name_or_path)
 
-        elif self.model_name_or_path not in MODEL_NAMES:
+        elif self.model_name_or_path not in self._verified_model_names:
             # if model_name_or_path is not a local directory
             warnings.warn(
                 f"`model_name_or_path` received an unverified model ID \"{self.model_name_or_path}\"."
-                f" You may experience unexpected behavior from the model. Verified models are '{MODEL_NAMES}'."
+                f" You may experience unexpected behavior from the model. Verified models are"
+                f" '{self._verified_model_names}'."
             )
 
         config = AutoConfig.from_pretrained(self.model_name_or_path)
@@ -185,10 +191,7 @@ class ModelArguments:
 class DatasetArguments:
     dataset_name: Optional[str] = field(
         default=None,
-        metadata={
-            "help": "Hugging Face dataset name. If set to an non-empty string, will override `dataset_path`.",
-            "choices": [""] + DATASET_NAMES,
-        }
+        metadata={"help": "Hugging Face dataset name. If set to an non-empty string, will override `dataset_path`."}
     )
     dataset_path: List[str] = field(
         default_factory=list,
@@ -246,15 +249,15 @@ class DatasetArguments:
         metadata={"help": "Whether to tokenize the input on-the-fly."}
     )
     prompt_style: str = field(
-        default="dolly",
+        default="default",
         metadata={"help": "Prompt template style.", "choices": PROMPT_STYLES}
     )
     response_template: str = field(
-        default=RESPONSE_KEY_NL,
+        default="### Response:\n",
         metadata={
-            "help": f"The response template for instruction fine-tuning such as `{RESPONSE_KEY}`. If set to"
-                    f" a non-empty string, The response template and all text before it will not be included"
-                    f" in the loss computation.",
+            "help": f"The response template for instruction fine-tuning such as `### Response:`. If set to"
+                    f" a non-empty string, the response template and all text before it will be excluded"
+                    f" from the loss computation.",
         }
     )
     cleanup_data_cache: bool = field(
@@ -265,6 +268,12 @@ class DatasetArguments:
                     f" logic we need to clean the data cache to ensure the most up-to-date data is generated.",
         }
     )
+    # private args for easier inheritance
+    _verified_dataset_names: Tuple[str] = field(
+        default=tuple(DATASET_NAMES),
+        init=False,
+        metadata={"help": "The Hugging Face ID of the supported/verified datasets."}
+    )
 
     def __post_init__(self) -> None:
         if not bool(self.dataset_name):
@@ -274,6 +283,13 @@ class DatasetArguments:
         if bool(self.dataset_name):
             # if `dataset_name` is a valid string
             self.dataset_path = []
+
+            if self.dataset_name not in self._verified_dataset_names:
+                warnings.warn(
+                    f"`dataset_name` received an unverified dataset ID \"{self.dataset_name}\"."
+                    f" Data processing may not work on this dataset. Verified datasets are"
+                    f" '{self._verified_dataset_names}'."
+                )
 
             split_names = get_dataset_split_names(self.dataset_name, self.dataset_config_name)
             if len(split_names) <= 1 and self.test_size is None:
@@ -328,6 +344,10 @@ class DatasetArguments:
         if self.dataset_num_proc is not None and self.dataset_num_proc <= 0:
             warnings.warn("Received non-positive `dataset_num_proc`; fallback to CPU count.")
             self.dataset_num_proc = os.cpu_count()
+
+        if len(self.response_template) > 0 and not self.response_template.endswith("\n"):
+            # response_template should always end with newline
+            self.response_template += "\n"
 
     @property
     def test_size(self) -> Optional[Union[int, float]]:

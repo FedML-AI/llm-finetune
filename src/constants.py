@@ -43,6 +43,7 @@ PEFT_TYPES = [
 ]
 
 PROMPT_STYLES = [
+    "default",
     "dolly",
     "llama",
 ]

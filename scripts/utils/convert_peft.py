@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 from typing import Optional, Union
+import warnings
 
 # disable GPUs
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -98,11 +99,18 @@ if __name__ == '__main__':
         raise RuntimeError(f"{input_dir} is not a valid huggingface model directory.")
 
     if input_dir_type == "base":
+        warnings.warn("Base model detected. Model checkpoint will be directly copied to the destination directory.")
         if input_dir != output_dir:
-            output_dir.mkdir(parents=True, exist_ok=True)
+            if is_directory(output_dir):
+                # remove the destination directory if it's empty
+                output_dir.rmdir()
+            output_dir.parent.mkdir(parents=True, exist_ok=True)
             shutil.copytree(str(input_dir), str(output_dir))
+        else:
+            warnings.warn("Source and destination are the same. Skipping.")
 
     elif input_dir_type == "peft":
+        print(f"PEFT checkpoint detected. Converting.")
         tokenizer = AutoTokenizer.from_pretrained(str(input_dir), **model_kwargs)
         model = AutoPeftModelForCausalLM.from_pretrained(str(input_dir), **model_kwargs, **peft_kwargs)
 

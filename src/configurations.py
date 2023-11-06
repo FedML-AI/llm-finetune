@@ -115,6 +115,10 @@ class ModelArguments:
             "choices": MODEL_DTYPES,
         }
     )
+    model_revision: Optional[str] = field(
+        default=None,
+        metadata={"help": "Model repo revision. If set to empty string, will use the HEAD of the main branch."}
+    )
     peft_type: str = field(
         default="none",
         metadata={"help": "PEFT type. Set to \"none\" to disable PEFT.", "choices": PEFT_TYPES}
@@ -151,6 +155,9 @@ class ModelArguments:
         if self.auth_token is not None:
             os.environ["HUGGING_FACE_HUB_TOKEN"] = str(self.auth_token)
 
+        if not bool(self.model_revision):
+            self.model_revision = None
+
         if is_file(self.model_name_or_path):
             raise ValueError(
                 f"`model_name_or_path` must be a valid directory path or a valid hugging face model ID"
@@ -168,7 +175,7 @@ class ModelArguments:
                 f" '{self._verified_model_names}'."
             )
 
-        config = AutoConfig.from_pretrained(self.model_name_or_path)
+        config = AutoConfig.from_pretrained(self.model_name_or_path, revision=self.model_revision)
         required_transformers_version = getattr(config, "transformers_version", None)
         if (
                 required_transformers_version is not None and

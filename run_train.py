@@ -169,6 +169,7 @@ def get_dataset(
 
 def get_tokenizer(model_args: ModelArguments, **kwargs) -> TokenizerType:
     kwargs.setdefault("trust_remote_code", True)
+    kwargs.setdefault("revision", model_args.model_revision)
 
     tokenizer: TokenizerType = AutoTokenizer.from_pretrained(model_args.model_name_or_path, **kwargs)
 
@@ -184,6 +185,8 @@ def get_base_model(
         torch_dtype: Optional[torch.dtype] = None,
         **kwargs
 ) -> ModelType:
+    kwargs.setdefault("revision", model_args.model_revision)
+
     config = AutoConfig.from_pretrained(model_args.model_name_or_path, torch_dtype=torch_dtype, **kwargs)
     model_cls = get_model_class_from_config(config, **kwargs)
 

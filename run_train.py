@@ -46,7 +46,8 @@ def preprocess_dataset(
     remove_columns = {"text", *dataset.column_names}
     if "text" not in dataset.column_names:
         dataset = dataset.map(get_prompt_formatter(dataset_args.prompt_style))
-    dataset = dataset.map(get_keyword_replacer())
+    if not dataset_args.disable_data_keyword_replacement:
+        dataset = dataset.map(get_keyword_replacer())
 
     tokenization_kwargs = dict(
         truncation=dataset_args.truncate_long_seq,

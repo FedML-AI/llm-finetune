@@ -28,7 +28,7 @@ from src.modeling_utils import (
 )
 from src.models import add_flash_attention
 from src.typing import DatasetType, ModelConfigType, ModelType, TokenizerType
-from src.utils import parse_hf_args, save_config
+from src.utils import parse_hf_args, replace_if_exists, save_config
 
 
 def preprocess_dataset(
@@ -39,6 +39,7 @@ def preprocess_dataset(
     dataset_kwargs = {}
     if not isinstance(dataset, IterableDataset):
         dataset_kwargs["num_proc"] = dataset_args.dataset_num_proc
+        dataset_kwargs["desc"] = None
 
     if {"input", "output"}.issubset(dataset.column_names):
         # This is required for medical meadow
@@ -49,9 +50,15 @@ def preprocess_dataset(
 
     columns_to_remove = {"text", *dataset.column_names}
     if "text" not in dataset.column_names:
-        dataset = dataset.map(get_prompt_formatter(dataset_args.prompt_style), **dataset_kwargs)
+        dataset = dataset.map(
+            get_prompt_formatter(dataset_args.prompt_style),
+            **replace_if_exists(dataset_kwargs, desc="Apply text template")
+        )
     if not dataset_args.disable_data_keyword_replacement:
-        dataset = dataset.map(get_keyword_replacer(), **dataset_kwargs)
+        dataset = dataset.map(
+            get_keyword_replacer(),
+            **replace_if_exists(dataset_kwargs, desc="Replace keywords")
+        )
 
     tokenization_kwargs = dict(
         truncation=dataset_args.truncate_long_seq,
@@ -74,7 +81,7 @@ def preprocess_dataset(
             encode,
             batched=True,
             remove_columns=list(columns_to_remove),
-            **dataset_kwargs
+            **replace_if_exists(dataset_kwargs, desc="Tokenize")
         )
 
     if isinstance(dataset, Sized):
@@ -83,7 +90,7 @@ def preprocess_dataset(
     if dataset_args.remove_long_seq and dataset_args.max_seq_length is not None:
         dataset = dataset.filter(
             lambda rec: len(rec["input_ids"]) <= dataset_args.max_seq_length,
-            **dataset_kwargs
+            **replace_if_exists(dataset_kwargs, desc="Remove long sequence")
         )
 
         if isinstance(dataset, Sized):

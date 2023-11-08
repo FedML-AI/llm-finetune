@@ -275,6 +275,10 @@ class DatasetArguments:
                     f" logic we need to clean the data cache to ensure the most up-to-date data is generated.",
         }
     )
+    disable_data_keyword_replacement: bool = field(
+        default=False,
+        metadata={"help": f"Whether to disable the keyword replacement for data preprocessing."}
+    )
     # private args for easier inheritance
     _verified_dataset_names: Tuple[str] = field(
         default=tuple(DATASET_NAMES),

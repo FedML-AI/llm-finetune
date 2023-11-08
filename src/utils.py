@@ -3,6 +3,7 @@ from typing import (
     Dict,
     Iterable,
     Mapping,
+    MutableMapping,
     Optional,
     Sequence,
     Tuple,
@@ -12,6 +13,7 @@ from typing import (
 )
 
 from argparse import Namespace
+from copy import copy
 from dataclasses import fields
 import os
 from pathlib import Path
@@ -29,6 +31,7 @@ if is_fedml_available():
     from fedml.arguments import Arguments
 
 T = TypeVar("T")
+M = TypeVar("M", bound=MutableMapping)
 
 
 def get_real_path(path: PathType) -> str:
@@ -154,3 +157,18 @@ def dataclass_to_sanitized_dict(dataclass_obj) -> Dict[str, Any]:
 def to_sanitized_dict(d: Mapping[str, Any]) -> Dict[str, Any]:
     valid_types = [bool, int, float, str, Tensor]
     return {k: v if type(v) in valid_types else str(v) for k, v in d.items()}
+
+
+def replace_if_exists(d: M, *mappings: Mapping, inplace: bool = False, **kwargs: Any) -> M:
+    if not inplace:
+        d = copy(d)
+
+    for m in mappings:
+        if not isinstance(m, Mapping):
+            raise TypeError(f"All positional inputs must be `Mapping` objects but received \"{type(m)}\" object.")
+
+        d.update({k: v for k, v in m.items() if k in d})
+
+    d.update({k: v for k, v in kwargs.items() if k in d})
+
+    return d

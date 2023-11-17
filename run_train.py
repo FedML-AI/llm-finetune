@@ -252,37 +252,19 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
     torch_dtype = kwargs.pop("torch_dtype", model_args.torch_dtype)
 
     model = get_base_model(model_args, tokenizer_length, torch_dtype, **kwargs)
+    peft_config = model_args.get_peft_config(
+        model,
+        revision=kwargs.get("revision", model_args.model_revision)
+    )
 
-    if model_args.peft_type == "lora":
-        if model_args.lora_on_all_modules:
-            from src.peft_utils import LORA_LAYER_TYPES
-
-            additional_target_modules = []
-            for n, m in model.named_modules():
-                if isinstance(m, tuple(LORA_LAYER_TYPES)):
-                    additional_target_modules.append(n.split(".")[-1])
-
-            if len(additional_target_modules) > 0:
-                if model_args.lora_target_modules is None:
-                    model_args.lora_target_modules = []
-                model_args.lora_target_modules = list(set(model_args.lora_target_modules + additional_target_modules))
-
-        # apply LoRA
-        peft_config = LoraConfig(
-            task_type=TaskType.CAUSAL_LM,
-            inference_mode=False,
-            r=model_args.lora_r,
-            target_modules=model_args.lora_target_modules,
-            lora_alpha=model_args.lora_alpha,
-            lora_dropout=model_args.lora_dropout
-        )
+    if peft_config is not None:
         # see https://github.com/huggingface/peft/issues/137#issuecomment-1445912413
         model.enable_input_require_grads()
         model = get_peft_model(model, peft_config)
         model.print_trainable_parameters()
 
         # TODO: support non-LoRA module saving when `lora_on_all_modules=True`
-        # if model_args.lora_on_all_modules:
+        # if model_args.peft_type == "lora" and model_args.lora_on_all_modules:
         #     from peft.tuners.lora import LoraLayer
         #
         #     # enable gradient for non-LoRA layers

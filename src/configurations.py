@@ -6,6 +6,7 @@ import warnings
 
 from accelerate.utils import compare_versions
 from datasets import get_dataset_split_names
+from peft import LoraConfig, TaskType
 import torch
 from transformers import AutoConfig, TrainingArguments
 
@@ -18,7 +19,7 @@ from .constants import (
     PEFT_TYPES,
     PROMPT_STYLES,
 )
-from .typing import to_torch_dtype
+from .typing import ModelType, PeftConfigType, to_torch_dtype
 from .utils import dataclass_to_dict, get_real_path, is_directory, is_file, to_sanitized_dict
 
 
@@ -192,6 +193,39 @@ class ModelArguments:
     @property
     def torch_dtype(self) -> Optional[torch.dtype]:
         return to_torch_dtype(self.model_dtype)
+
+    def get_peft_config(self, model: ModelType, **kwargs: Any) -> Optional[PeftConfigType]:
+        peft_kwargs = dict(
+            base_model_name_or_path=self.model_name_or_path,
+            task_type=TaskType.CAUSAL_LM,
+            revision=self.model_revision,
+        )
+        peft_kwargs.update(kwargs)
+
+        if self.peft_type == "lora":
+            if self.lora_on_all_modules:
+                from src.peft_utils import LORA_LAYER_TYPES
+
+                additional_target_modules = []
+                for n, m in model.named_modules():
+                    if isinstance(m, tuple(LORA_LAYER_TYPES)):
+                        additional_target_modules.append(n.split(".")[-1])
+
+                if len(additional_target_modules) > 0:
+                    if self.lora_target_modules is None:
+                        self.lora_target_modules = []
+                    self.lora_target_modules = list(set(self.lora_target_modules + additional_target_modules))
+
+            return LoraConfig(
+                r=self.lora_r,
+                target_modules=self.lora_target_modules,
+                lora_alpha=self.lora_alpha,
+                lora_dropout=self.lora_dropout,
+                **peft_kwargs
+            )
+
+        else:
+            return None
 
 
 @dataclass

@@ -24,6 +24,7 @@ __all__ = [
     "ModelType",
     "OptimizerType",
     "PathType",
+    "PeftConfigType",
     "to_torch_dtype",
     "TokenizerType",
 ]
@@ -36,6 +37,7 @@ DatasetType = Union[Dataset, IterableDataset]
 ModelConfigType = TypeVar("ModelConfigType", bound=Union[PretrainedConfig, PeftConfig])
 ModelType = TypeVar("ModelType", bound=Union[PreTrainedModel, PeftModel])
 TokenizerType = TypeVar("TokenizerType", bound=PreTrainedTokenizerBase)
+PeftConfigType = TypeVar("PeftConfigType", bound=PeftConfig)
 
 OptimizerType = Optimizer
 LrSchedulerType = Union[LambdaLR, ReduceLROnPlateau]

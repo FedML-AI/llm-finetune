@@ -10,9 +10,19 @@ MASTER_PORT="${2:-12355}"
 NUM_NODES="${3:-1}"
 NUM_GPU="$(python3 -c "import torch; print(torch.cuda.device_count())")"
 
+EXTRA_ARGS=()
+
 # infer runner based on GPU count
 if [[ "${NUM_GPU}" -gt 1 ]]; then
   echo "Detected ${NUM_GPU} GPUs. Use PyTorch distributed runner."
+
+  if python3 -c "import deepspeed" &>/dev/null; then
+    echo "Found DeepSpeed. Use DeepSpeed for training."
+
+    EXTRA_ARGS+=(
+      --deepspeed "configs/deepspeed/ds_z3_bf16_config.json"
+    )
+  fi
 
   CMD=(
     torchrun
@@ -30,6 +40,7 @@ fi
 
 "${CMD[@]}" \
   run_train.py \
+  "${EXTRA_ARGS[@]}" \
   --ddp_find_unused_parameters "False" \
   --model_name_or_path "EleutherAI/pythia-70m" \
   --dataset_name "FedML/databricks-dolly-15k-niid" \

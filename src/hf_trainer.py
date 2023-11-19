@@ -12,7 +12,7 @@ from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from .configurations import ExperimentArguments
 from .distributed import barrier
 from .integrations import is_fedml_available
-from .trainer_callback import FedMLCallback
+from .trainer_callback import ExtraSaveCallback, FedMLCallback
 from .typing import (
     DataCollatorType,
     DatasetType,
@@ -54,7 +54,10 @@ class HFTrainer(Trainer):
             preprocess_logits_for_metrics=preprocess_logits_for_metrics
         )
 
-        if is_fedml_available() and "fedml" in args.custom_logger:
+        if not self.has_callback(ExtraSaveCallback):
+            self.add_callback(ExtraSaveCallback())
+
+        if is_fedml_available() and "fedml" in args.custom_logger and not self.has_callback(FedMLCallback):
             self.add_callback(FedMLCallback())
 
         # type hint
@@ -76,14 +79,18 @@ class HFTrainer(Trainer):
 
         super().log(logs)
 
-    def replace_callback(
-            self,
-            old_callback: Union[Type[TrainerCallback], TrainerCallback],
-            new_callback: Union[Type[TrainerCallback], TrainerCallback],
-    ) -> None:
-        # replace callback if exists
-        if self.pop_callback(old_callback) is not None:
-            self.add_callback(new_callback)
+    def has_callback(self, callback: Union[Type[TrainerCallback], TrainerCallback]) -> bool:
+        # Adapted from https://github.com/huggingface/transformers/blob/a7da2996a00c0ea083012ac86ab70f0bc4799f33/src/transformers/trainer_callback.py#L332
+        if isinstance(callback, type):
+            for cb in self.callback_handler.callbacks:
+                if isinstance(cb, callback):
+                    return True
+        else:
+            for cb in self.callback_handler.callbacks:
+                if cb == callback:
+                    return True
+
+        return False
 
     def save_checkpoint(self, output_dir: PathType) -> None:
         output_dir = Path(output_dir)

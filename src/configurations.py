@@ -33,6 +33,14 @@ class ExperimentArguments(TrainingArguments):
             "nargs": "+",
         }
     )
+    extra_save_steps: List[int] = field(
+        default_factory=list,
+        metadata={
+            "help": "Extra steps to save checkpoints. Disabled if `save_strategy` is \"no\" or if contains"
+                    " non-positive number.",
+            "nargs": "+",
+        }
+    )
     # optional
     model_args: Optional["ModelArguments"] = field(
         default=None,
@@ -56,6 +64,10 @@ class ExperimentArguments(TrainingArguments):
             self.custom_logger = []
         elif "all" in self.custom_logger:
             self.custom_logger = [l for l in CUSTOM_LOGGERS if l not in ("all", "none")]
+
+        if any(v <= 0 for v in self.extra_save_steps):
+            self.extra_save_steps = []
+        self.extra_save_steps = list(set(self.extra_save_steps))
 
         super().__post_init__()
 

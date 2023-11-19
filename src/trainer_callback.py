@@ -5,10 +5,26 @@ from pathlib import Path
 
 from transformers import TrainerCallback, TrainerState, TrainingArguments, TrainerControl
 from transformers.integrations import rewrite_logs
-from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
+from transformers.trainer_utils import IntervalStrategy, PREFIX_CHECKPOINT_DIR
 
 from .integrations import is_fedml_available
 from .typing import PathType
+
+
+class ExtraSaveCallback(TrainerCallback):
+    def on_step_end(
+            self,
+            args: TrainingArguments,
+            state: TrainerState,
+            control: TrainerControl,
+            **kwargs
+    ) -> TrainerControl:
+        extra_save_steps = set(getattr(args, "extra_save_steps", set()))
+
+        if args.save_strategy != IntervalStrategy.NO and state.global_step in extra_save_steps:
+            control.should_save = True
+
+        return control
 
 
 class FedMLCallback(TrainerCallback):

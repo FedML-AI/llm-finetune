@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
+import base64
 from dataclasses import dataclass, field, is_dataclass
 import os
 import warnings
@@ -9,6 +10,7 @@ from datasets import get_dataset_split_names
 from peft import LoraConfig, TaskType
 import torch
 from transformers import AutoConfig, TrainingArguments
+import yaml
 
 from .constants import (
     CUSTOM_LOGGERS,
@@ -19,6 +21,7 @@ from .constants import (
     PEFT_TYPES,
     PROMPT_STYLES,
 )
+from .dataset_utils import DEFAULT_COLUMN_NAME_MAPPING, DEFAULT_KEYWORD_REPLACEMENTS
 from .typing import ModelType, PeftConfigType, to_torch_dtype
 from .utils import dataclass_to_dict, get_real_path, is_directory, is_file, to_sanitized_dict
 
@@ -325,6 +328,21 @@ class DatasetArguments:
         default=False,
         metadata={"help": f"Whether to disable the keyword replacement for data preprocessing."}
     )
+    data_keyword_replacements: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": f"Dataset keyword replacement. This replaces keywords in dataset with desired text. Can be the"
+                    f" path to a YAML file, a base64 encoded YAML string, or an already loaded YAML as a dict. Set"
+                    f" to an empty string to use the default value.",
+        }
+    )
+    column_name_mapping: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": f"Dataset column name mapping. Can be the path to a YAML file, a base64 encoded YAML string, or an"
+                    f" already loaded YAML as a dict. Set to an empty string to use the default value.",
+        }
+    )
     # private args for easier inheritance
     _verified_dataset_names: Tuple[str] = field(
         default=tuple(DATASET_NAMES),
@@ -406,6 +424,9 @@ class DatasetArguments:
             # response_template should always end with newline
             self.response_template += "\n"
 
+        self.data_keyword_replacements: Dict[str, str] = self._parse_data_keyword_replacements()
+        self.column_name_mapping: Dict[str, str] = self._parse_column_name_mapping()
+
     @property
     def test_size(self) -> Optional[Union[int, float]]:
         if 0 < self.test_dataset_ratio < 1:
@@ -425,3 +446,34 @@ class DatasetArguments:
             return self.max_seq_length + 1
         else:
             return self.max_seq_length
+
+    def _parse_data_keyword_replacements(self) -> Dict[str, str]:
+        if self.data_keyword_replacements is None or self.data_keyword_replacements == "":
+            return DEFAULT_KEYWORD_REPLACEMENTS.copy()
+        else:
+            return self._parse_config(self.data_keyword_replacements)
+
+    def _parse_column_name_mapping(self) -> Dict[str, str]:
+        if self.column_name_mapping is None or self.column_name_mapping == "":
+            return DEFAULT_COLUMN_NAME_MAPPING.copy()
+        else:
+            return self._parse_config(self.column_name_mapping)
+
+    @staticmethod
+    def _parse_config(config_or_str: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+        if isinstance(config_or_str, Mapping):
+            config = dict(config_or_str)
+
+        elif isinstance(config_or_str, str):
+            if is_file(config_or_str):
+                with open(config_or_str, "r") as f:
+                    config: Dict[str, Any] = yaml.safe_load(f)
+
+            else:
+                config_decoded = base64.urlsafe_b64decode(config_or_str).decode("utf-8")
+                config: Dict[str, Any] = yaml.safe_load(config_decoded)
+
+        else:
+            raise TypeError(f"\"{config_or_str}\" is not a supported config type.")
+
+        return config

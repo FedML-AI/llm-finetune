@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Sized, Tuple, Union
+from typing import Any, Optional, Sized, Tuple, Union
 
 from datetime import timedelta
 import logging
@@ -13,7 +13,7 @@ from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 from src.configurations import DatasetArguments, ExperimentArguments, ModelArguments
 from src.constants import DEFAULT_MAX_SEQ_LENGTH
-from src.dataset_utils import DEFAULT_COLUMN_NAME_MAPPING, get_keyword_replacer, get_prompt_formatter
+from src.dataset_utils import get_keyword_replacer, get_prompt_formatter
 from src.hf_trainer import HFTrainer
 from src.integrations import is_deepspeed_zero3_enabled
 from src.modeling_utils import (

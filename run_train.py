@@ -172,6 +172,7 @@ def get_dataset(
 def get_tokenizer(model_args: ModelArguments, **kwargs) -> TokenizerType:
     kwargs.setdefault("trust_remote_code", True)
     kwargs.setdefault("revision", model_args.model_revision)
+    kwargs.setdefault("use_fast", model_args.use_fast_tokenizer)
 
     tokenizer: TokenizerType = AutoTokenizer.from_pretrained(model_args.model_name_or_path, **kwargs)
 

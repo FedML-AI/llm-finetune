@@ -160,6 +160,10 @@ class ModelArguments:
     )
     load_pretrained: bool = field(default=True, metadata={"help": "Whether to load pretrained model weights."})
     use_flash_attention: bool = field(default=False, metadata={"help": "Whether to use flash attention."})
+    use_fast_tokenizer: bool = field(
+        default=True,
+        metadata={"help": "Whether to use the fast tokenizer from `tokenizers` library."},
+    )
     # private args for easier inheritance
     _verified_model_names: Tuple[str] = field(
         default=tuple(MODEL_NAMES),

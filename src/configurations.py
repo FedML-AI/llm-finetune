@@ -74,6 +74,14 @@ class ExperimentArguments(TrainingArguments):
 
         super().__post_init__()
 
+        # for `transformers>=4.35.0`, `gradient_checkpointing_kwargs` is added to allow passing arguments directly to
+        # `torch.utils.checkpoint.checkpoint`
+        if hasattr(self, "gradient_checkpointing_kwargs"):
+            if self.gradient_checkpointing and self.gradient_checkpointing_kwargs is None:
+                # see https://pytorch.org/docs/stable/checkpoint.html
+                # see https://medium.com/pytorch/how-activation-checkpointing-enables-scaling-up-training-deep-learning-models-7a93ae01ff2d
+                self.gradient_checkpointing_kwargs = dict(use_reentrant=True)
+
     def to_dict(self) -> Dict[str, Any]:
         d = super().to_dict()
 

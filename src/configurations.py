@@ -461,15 +461,21 @@ class DatasetArguments:
 
     def _parse_data_keyword_replacements(self) -> Dict[str, str]:
         if self.data_keyword_replacements is None or self.data_keyword_replacements == "":
-            return DEFAULT_KEYWORD_REPLACEMENTS.copy()
+            config = DEFAULT_KEYWORD_REPLACEMENTS.copy()
         else:
-            return self._parse_config(self.data_keyword_replacements)
+            config = self._parse_config(self.data_keyword_replacements)
+
+        # `key == value` is meaningless and should be removed
+        return {k: v for k, v in config.items() if k != v}
 
     def _parse_column_name_mapping(self) -> Dict[str, str]:
         if self.column_name_mapping is None or self.column_name_mapping == "":
-            return DEFAULT_COLUMN_NAME_MAPPING.copy()
+            config = DEFAULT_COLUMN_NAME_MAPPING.copy()
         else:
-            return self._parse_config(self.column_name_mapping)
+            config = self._parse_config(self.column_name_mapping)
+
+        # `key == value` is meaningless and should be removed
+        return {k: v for k, v in config.items() if k != v}
 
     @staticmethod
     def _parse_config(config_or_str: Union[str, Dict[str, Any]]) -> Dict[str, Any]:

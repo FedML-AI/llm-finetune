@@ -37,9 +37,14 @@ def preprocess_dataset(
         dataset_kwargs["num_proc"] = dataset_args.dataset_num_proc
         dataset_kwargs["desc"] = None
 
-    if set(dataset_args.column_name_mapping.keys()).issubset(dataset.column_names):
-        # This is required for medical meadow
-        dataset = dataset.rename_columns(dataset_args.column_name_mapping)
+    if not dataset_args.column_name_mapping.keys().isdisjoint(dataset.column_names):
+        # replace overlapping columns
+        column_name_mapping = {
+            k: dataset_args.column_name_mapping[k]
+            for k in set(dataset_args.column_name_mapping.keys()).intersection(dataset.column_names)
+        }
+
+        dataset = dataset.rename_columns(column_name_mapping)
 
     columns_to_remove = {"text", *dataset.column_names}
     if "text" not in dataset.column_names:

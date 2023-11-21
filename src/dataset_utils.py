@@ -125,6 +125,11 @@ def get_prompt_formatter(prompt_style: str) -> Callable[[MutableMapping[str, Any
 
 # -----------------------------------------------------------------
 
+DEFAULT_COLUMN_NAME_MAPPING = {
+    "input": "context",
+    "output": "response",
+}
+
 DEFAULT_KEYWORD_REPLACEMENTS = {
     # for "lavita/ChatDoctor-HealthCareMagic-100k"
     "Chat Doctor": "AI Assistant",

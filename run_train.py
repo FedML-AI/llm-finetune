@@ -7,11 +7,7 @@ from timeit import default_timer as timer
 
 from accelerate.utils import compare_versions
 from datasets import IterableDataset, IterableDatasetDict, load_dataset
-from peft import (
-    get_peft_model,
-    LoraConfig,
-    TaskType,
-)
+from peft import get_peft_model
 import torch
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
@@ -41,12 +37,14 @@ def preprocess_dataset(
         dataset_kwargs["num_proc"] = dataset_args.dataset_num_proc
         dataset_kwargs["desc"] = None
 
-    if {"input", "output"}.issubset(dataset.column_names):
-        # This is required for medical meadow
-        dataset = dataset.rename_columns({
-            "input": "context",
-            "output": "response",
-        })
+    if not dataset_args.column_name_mapping.keys().isdisjoint(dataset.column_names):
+        # replace overlapping columns
+        column_name_mapping = {
+            k: dataset_args.column_name_mapping[k]
+            for k in set(dataset_args.column_name_mapping.keys()).intersection(dataset.column_names)
+        }
+
+        dataset = dataset.rename_columns(column_name_mapping)
 
     columns_to_remove = {"text", *dataset.column_names}
     if "text" not in dataset.column_names:
@@ -56,7 +54,7 @@ def preprocess_dataset(
         )
     if not dataset_args.disable_data_keyword_replacement:
         dataset = dataset.map(
-            get_keyword_replacer(),
+            get_keyword_replacer(dataset_args.data_keyword_replacements),
             **replace_if_exists(dataset_kwargs, desc="Replace keywords")
         )
 
@@ -179,6 +177,7 @@ def get_dataset(
 def get_tokenizer(model_args: ModelArguments, **kwargs) -> TokenizerType:
     kwargs.setdefault("trust_remote_code", True)
     kwargs.setdefault("revision", model_args.model_revision)
+    kwargs.setdefault("use_fast", model_args.use_fast_tokenizer)
 
     tokenizer: TokenizerType = AutoTokenizer.from_pretrained(model_args.model_name_or_path, **kwargs)
 

@@ -21,7 +21,8 @@ Below is an instruction that describes a task. Write a response that appropriate
 # This is a training prompt that contains an input string that serves as context for the instruction. For example,
 # the input might be a passage from Wikipedia and the instruction is to extract some information from it.
 DEFAULT_PROMPT_WITH_CONTEXT_TEMPLATE = f"""\
-Below is an instruction that describes a task. Write a response that appropriately completes the request.
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response \
+that appropriately completes the request.
 
 ### Instruction:
 {{instruction}}
@@ -34,7 +35,17 @@ Below is an instruction that describes a task. Write a response that appropriate
 """
 
 # -----------------------------------------------------------------
-DOLLY_PROMPT_TEMPLATE = DEFAULT_PROMPT_TEMPLATE
+DOLLY_PROMPT_TEMPLATE = f"""\
+Below is an instruction that describes a task. Write a response that appropriately completes the request.
+
+### Instruction:
+{{instruction}}
+
+### Response:
+{{response}}
+
+### End
+"""
 
 DOLLY_PROMPT_WITH_CONTEXT_TEMPLATE = f"""\
 Below is an instruction that describes a task. Write a response that appropriately completes the request.
@@ -47,6 +58,8 @@ Input:
 
 ### Response:
 {{response}}
+
+### End
 """
 
 # -----------------------------------------------------------------

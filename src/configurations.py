@@ -70,7 +70,7 @@ class ExperimentArguments(TrainingArguments):
 
         if any(v <= 0 for v in self.extra_save_steps):
             self.extra_save_steps = []
-        self.extra_save_steps = list(set(self.extra_save_steps))
+        self.extra_save_steps = sorted(set(self.extra_save_steps))
 
         super().__post_init__()
 
@@ -123,8 +123,14 @@ class ExperimentArguments(TrainingArguments):
     def add_and_verify_dataset_args(self, dataset_args: "DatasetArguments") -> None:
         if dataset_args.tokenize_on_the_fly and self.remove_unused_columns:
             # See https://github.com/huggingface/datasets/issues/1867
-            warnings.warn(f"When tokenizing on-the-fly, need to disable `remove_unused_columns`.")
+            warnings.warn(
+                f"When tokenizing on-the-fly, need to disable `remove_unused_columns` and `group_by_length`"
+                f" to ensure correctness and performance."
+            )
+
             self.remove_unused_columns = False
+            # see https://discuss.huggingface.co/t/set-transform-and-group-by-length-true/6666/2
+            self.group_by_length = False
 
         self.dataset_args = dataset_args
 
@@ -428,9 +434,18 @@ class DatasetArguments:
             warnings.warn("`truncate_long_seq` is set to \"True\" since `remove_long_seq` is \"True\".")
             self.truncate_long_seq = True
 
-        if self.dataset_num_proc is not None and self.dataset_num_proc <= 0:
-            warnings.warn("Received non-positive `dataset_num_proc`; fallback to CPU count.")
-            self.dataset_num_proc = os.cpu_count()
+        if self.dataset_num_proc is not None:
+            max_cpu_count = os.cpu_count()
+            if max_cpu_count is None:
+                warnings.warn(f"Cannot detect CPU number; fallback to 0.")
+                max_cpu_count = 0
+
+            if self.dataset_num_proc <= 0:
+                warnings.warn("Received non-positive `dataset_num_proc`; fallback to CPU count.")
+                self.dataset_num_proc = max_cpu_count
+
+            # cap process number to CPU cores
+            self.dataset_num_proc = min(self.dataset_num_proc, max_cpu_count)
 
         if len(self.response_template) > 0 and not self.response_template.endswith("\n"):
             # response_template should always end with newline

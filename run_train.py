@@ -144,14 +144,20 @@ def get_dataset(
         dataset = preprocess_dataset(dataset_args, dataset_dict["train"], tokenizer)
 
         logging.info("splitting dataset")
-        dataset_dict = dataset.train_test_split(
-            test_size=dataset_args.test_size,
-            shuffle=True,
-            seed=seed
-        )
+        if isinstance(dataset, IterableDataset):
+            dataset = dataset.shuffle(seed)
 
-        train_dataset = dataset_dict["train"]
-        test_dataset = dataset_dict["test"]
+            train_dataset = dataset.skip(dataset_args.test_size)
+            test_dataset = dataset.take(dataset_args.test_size)
+        else:
+            dataset_dict = dataset.train_test_split(
+                test_size=dataset_args.test_size,
+                shuffle=True,
+                seed=seed
+            )
+
+            train_dataset = dataset_dict["train"]
+            test_dataset = dataset_dict["test"]
     else:
         train_dataset = preprocess_dataset(dataset_args, dataset_dict["train"], tokenizer)
         test_dataset = preprocess_dataset(dataset_args, dataset_dict["test"], tokenizer)

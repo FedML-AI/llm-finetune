@@ -139,8 +139,11 @@ def get_prompt_formatter(prompt_style: str) -> Callable[[MutableMapping[str, Any
 # -----------------------------------------------------------------
 
 DEFAULT_COLUMN_NAME_MAPPING = {
+    # for datasets such as yahma/alpaca-cleaned
     "input": "context",
     "output": "response",
+    # for datasets such as tiiuae/falcon-refinedweb
+    "content": "text",
 }
 
 DEFAULT_KEYWORD_REPLACEMENTS = {

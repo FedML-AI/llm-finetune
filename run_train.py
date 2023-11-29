@@ -180,12 +180,8 @@ def get_dataset(
     return train_dataset, test_dataset, eval_dataset
 
 
-def get_tokenizer(model_args: ModelArguments, **kwargs) -> TokenizerType:
-    kwargs.setdefault("trust_remote_code", True)
-    kwargs.setdefault("revision", model_args.model_revision)
-    kwargs.setdefault("use_fast", model_args.use_fast_tokenizer)
-
-    tokenizer: TokenizerType = AutoTokenizer.from_pretrained(model_args.model_name_or_path, **kwargs)
+def get_tokenizer(model_args: ModelArguments, **kwargs: Any) -> TokenizerType:
+    tokenizer: TokenizerType = AutoTokenizer.from_pretrained(**model_args.get_tokenizer_kwargs(**kwargs))
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -196,38 +192,23 @@ def get_tokenizer(model_args: ModelArguments, **kwargs) -> TokenizerType:
 def get_base_model(
         model_args: ModelArguments,
         tokenizer_length: Optional[int] = None,
-        torch_dtype: Optional[torch.dtype] = None,
-        **kwargs
+        **kwargs: Any
 ) -> ModelType:
-    kwargs.setdefault("revision", model_args.model_revision)
-
-    config = AutoConfig.from_pretrained(model_args.model_name_or_path, torch_dtype=torch_dtype, **kwargs)
-    model_cls = get_model_class_from_config(config, **kwargs)
-
-    use_transformers_flash_attn = False
-    if (
-            compare_versions("transformers", ">=", "4.34.0")
-            and getattr(model_cls, "_supports_flash_attn_2", False)
-    ):
-        # starting from transformers v4.34.0, several hugging face models support flash attention v2
-        # only enable `use_flash_attention_2` flag for supported models; other models will be
-        # patched by `add_flash_attention`
-        # see https://github.com/huggingface/transformers/issues/26350
-        kwargs.setdefault("use_flash_attention_2", model_args.use_flash_attention)
-        use_transformers_flash_attn = model_args.use_flash_attention
+    kwargs = model_args.get_model_kwargs(**kwargs)
+    use_transformers_flash_attn = kwargs.get("use_flash_attention_2", False)
 
     if model_args.load_pretrained:
         kwargs.setdefault("low_cpu_mem_usage", not is_deepspeed_zero3_enabled())
 
-        model: ModelType = AutoModelForCausalLM.from_pretrained(
-            model_args.model_name_or_path,
-            torch_dtype=torch_dtype,
-            **kwargs
-        )
+        model: ModelType = AutoModelForCausalLM.from_pretrained(**kwargs)
     else:
+        config: ModelConfigType = AutoConfig.from_pretrained(**kwargs)
+        torch_dtype: Optional[torch.dtype] = kwargs.get("torch_dtype", model_args.torch_dtype)
+
         if use_transformers_flash_attn:
             # As of transformers v4.34.0, `AutoModel.from_config` does not support `use_flash_attention_2` flag
             # enable `use_flash_attention_2` manually
+            model_cls = get_model_class_from_config(config, **kwargs)
             config = model_cls._check_and_enable_flash_attn_2(
                 config,
                 torch_dtype=torch_dtype,
@@ -253,10 +234,10 @@ def get_base_model(
 
 
 def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None, **kwargs) -> ModelType:
-    kwargs.setdefault("trust_remote_code", True)
-    torch_dtype = kwargs.pop("torch_dtype", model_args.torch_dtype)
+    kwargs = model_args.get_model_kwargs(**kwargs)
+    torch_dtype = kwargs.get("torch_dtype", model_args.torch_dtype)
 
-    model = get_base_model(model_args, tokenizer_length, torch_dtype, **kwargs)
+    model = get_base_model(model_args, tokenizer_length, **kwargs)
     peft_config = model_args.get_peft_config(
         model,
         revision=kwargs.get("revision", model_args.model_revision)

@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 import base64
 from dataclasses import dataclass, field, is_dataclass
-import os
+import os.path
 import warnings
 
 from accelerate.utils import compare_versions
@@ -22,8 +22,9 @@ from .constants import (
     PROMPT_STYLES,
 )
 from .dataset_utils import DEFAULT_COLUMN_NAME_MAPPING, DEFAULT_KEYWORD_REPLACEMENTS
+from .modeling_utils import get_model_class_from_config
 from .typing import ModelType, PeftConfigType, to_torch_dtype
-from .utils import dataclass_to_dict, get_real_path, is_directory, is_file, to_sanitized_dict
+from .utils import dataclass_to_dict, is_directory, is_file, to_sanitized_dict
 
 
 @dataclass
@@ -138,16 +139,24 @@ class ExperimentArguments(TrainingArguments):
 @dataclass
 class ModelArguments:
     model_name_or_path: str = field(metadata={"help": "Model name or path."})
+    model_revision: Optional[str] = field(
+        default=None,
+        metadata={"help": "Model repo revision. If set to empty string, will use the HEAD of the main branch."}
+    )
+    tokenizer_name_or_path: Optional[str] = field(
+        default=None,
+        metadata={"help": "Tokenizer name or path."}
+    )
+    tokenizer_revision: Optional[str] = field(
+        default=None,
+        metadata={"help": "Tokenizer repo revision. If set to empty string, will use ."}
+    )
     model_dtype: Optional[str] = field(
         default=None,
         metadata={
             "help": "Model data type. Set to \"none\" to use the default data type.",
             "choices": MODEL_DTYPES,
         }
-    )
-    model_revision: Optional[str] = field(
-        default=None,
-        metadata={"help": "Model repo revision. If set to empty string, will use the HEAD of the main branch."}
     )
     peft_type: str = field(
         default="none",
@@ -192,6 +201,12 @@ class ModelArguments:
         if not bool(self.model_revision):
             self.model_revision = None
 
+        if not bool(self.tokenizer_name_or_path):
+            self.tokenizer_name_or_path = None
+
+        if not bool(self.tokenizer_revision):
+            self.tokenizer_revision = None
+
         if is_file(self.model_name_or_path):
             raise ValueError(
                 f"`model_name_or_path` must be a valid directory path or a valid hugging face model ID"
@@ -199,7 +214,8 @@ class ModelArguments:
             )
 
         elif is_directory(self.model_name_or_path):
-            self.model_name_or_path = get_real_path(self.model_name_or_path)
+            # only expand "~/" to full path
+            self.model_name_or_path = os.path.expanduser(self.model_name_or_path)
 
         elif self.model_name_or_path not in self._verified_model_names:
             # if model_name_or_path is not a local directory
@@ -226,6 +242,50 @@ class ModelArguments:
     @property
     def torch_dtype(self) -> Optional[torch.dtype]:
         return to_torch_dtype(self.model_dtype)
+
+    def get_model_kwargs(self, **kwargs: Any) -> Dict[str, Any]:
+        model_kwargs = dict(
+            pretrained_model_name_or_path=self.model_name_or_path,
+            revision=self.model_revision,
+            torch_dtype=self.torch_dtype,
+            trust_remote_code=True,
+        )
+        model_kwargs.update(kwargs)
+
+        config = AutoConfig.from_pretrained(**model_kwargs)
+        model_cls = get_model_class_from_config(config, **model_kwargs)
+
+        if compare_versions("transformers", "<", "4.34.0"):
+            if "use_flash_attention_2" in model_kwargs:
+                warnings.warn(f"Installed `transformers` does not support `use_flash_attention_2` flag.")
+            model_kwargs.pop("use_flash_attention_2", False)
+
+        elif getattr(model_cls, "_supports_flash_attn_2", False):
+            # for `transformers >= 4.34.0`, some huggingface models natively support flash attention v2.
+            # only enable `use_flash_attention_2` flag for supported models
+            # see https://github.com/huggingface/transformers/issues/26350
+            model_kwargs.setdefault("use_flash_attention_2", self.use_flash_attention)
+
+        elif model_kwargs.get("use_flash_attention_2", False):
+            warnings.warn(
+                f"Model \"{model_kwargs['pretrained_model_name_or_path']}\" does not natively support flash"
+                f" attention v2. Setting `use_flash_attention_2 = False`."
+            )
+            model_kwargs["use_flash_attention_2"] = False
+
+        return model_kwargs
+
+    def get_tokenizer_kwargs(self, **kwargs: Any) -> Dict[str, Any]:
+        tokenizer_kwargs = dict(
+            pretrained_model_name_or_path=(
+                self.tokenizer_name_or_path if bool(self.tokenizer_name_or_path) else self.model_name_or_path
+            ),
+            revision=self.tokenizer_revision if bool(self.tokenizer_revision) else self.model_revision,
+            trust_remote_code=True,
+        )
+        tokenizer_kwargs.update(kwargs)
+
+        return tokenizer_kwargs
 
     def get_peft_config(self, model: ModelType, **kwargs: Any) -> Optional[PeftConfigType]:
         peft_kwargs = dict(

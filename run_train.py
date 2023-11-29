@@ -180,12 +180,8 @@ def get_dataset(
     return train_dataset, test_dataset, eval_dataset
 
 
-def get_tokenizer(model_args: ModelArguments, **kwargs) -> TokenizerType:
-    kwargs.setdefault("trust_remote_code", True)
-    kwargs.setdefault("revision", model_args.model_revision)
-    kwargs.setdefault("use_fast", model_args.use_fast_tokenizer)
-
-    tokenizer: TokenizerType = AutoTokenizer.from_pretrained(model_args.model_name_or_path, **kwargs)
+def get_tokenizer(model_args: ModelArguments, **kwargs: Any) -> TokenizerType:
+    tokenizer: TokenizerType = AutoTokenizer.from_pretrained(**model_args.get_tokenizer_kwargs(**kwargs))
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -197,7 +193,7 @@ def get_base_model(
         model_args: ModelArguments,
         tokenizer_length: Optional[int] = None,
         torch_dtype: Optional[torch.dtype] = None,
-        **kwargs
+        **kwargs: Any
 ) -> ModelType:
     kwargs.setdefault("revision", model_args.model_revision)
 

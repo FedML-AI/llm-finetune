@@ -138,16 +138,24 @@ class ExperimentArguments(TrainingArguments):
 @dataclass
 class ModelArguments:
     model_name_or_path: str = field(metadata={"help": "Model name or path."})
+    model_revision: Optional[str] = field(
+        default=None,
+        metadata={"help": "Model repo revision. If set to empty string, will use the HEAD of the main branch."}
+    )
+    tokenizer_name_or_path: Optional[str] = field(
+        default=None,
+        metadata={"help": "Tokenizer name or path."}
+    )
+    tokenizer_revision: Optional[str] = field(
+        default=None,
+        metadata={"help": "Tokenizer repo revision. If set to empty string, will use ."}
+    )
     model_dtype: Optional[str] = field(
         default=None,
         metadata={
             "help": "Model data type. Set to \"none\" to use the default data type.",
             "choices": MODEL_DTYPES,
         }
-    )
-    model_revision: Optional[str] = field(
-        default=None,
-        metadata={"help": "Model repo revision. If set to empty string, will use the HEAD of the main branch."}
     )
     peft_type: str = field(
         default="none",
@@ -192,6 +200,12 @@ class ModelArguments:
         if not bool(self.model_revision):
             self.model_revision = None
 
+        if not bool(self.tokenizer_name_or_path):
+            self.tokenizer_name_or_path = None
+
+        if not bool(self.tokenizer_revision):
+            self.tokenizer_revision = None
+
         if is_file(self.model_name_or_path):
             raise ValueError(
                 f"`model_name_or_path` must be a valid directory path or a valid hugging face model ID"
@@ -226,6 +240,18 @@ class ModelArguments:
     @property
     def torch_dtype(self) -> Optional[torch.dtype]:
         return to_torch_dtype(self.model_dtype)
+
+    def get_tokenizer_kwargs(self, **kwargs: Any) -> Dict[str, Any]:
+        tokenizer_kwargs = dict(
+            pretrained_model_name_or_path=(
+                self.tokenizer_name_or_path if bool(self.tokenizer_name_or_path) else self.model_name_or_path
+            ),
+            revision=self.tokenizer_revision if bool(self.tokenizer_revision) else self.model_revision,
+            trust_remote_code=True,
+        )
+        tokenizer_kwargs.update(kwargs)
+
+        return tokenizer_kwargs
 
     def get_peft_config(self, model: ModelType, **kwargs: Any) -> Optional[PeftConfigType]:
         peft_kwargs = dict(

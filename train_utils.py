@@ -14,6 +14,7 @@ from src.integrations import is_deepspeed_zero3_enabled
 from src.modeling_utils import (
     get_max_seq_length as _get_max_seq_length,
     get_model_class_from_config,
+    get_parameter_stats_repr,
     get_vocab_size,
 )
 from src.models import add_flash_attention
@@ -241,7 +242,6 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
         # see https://github.com/huggingface/peft/issues/137#issuecomment-1445912413
         model.enable_input_require_grads()
         model = get_peft_model(model, peft_config)
-        model.print_trainable_parameters()
 
         # TODO: support non-LoRA module saving when `lora_on_all_modules=True`
         # if model_args.peft_type == "lora" and model_args.lora_on_all_modules:
@@ -259,6 +259,9 @@ def get_model(model_args: ModelArguments, tokenizer_length: Optional[int] = None
         logging.info(f"Loading model in {torch_dtype}.")
         model.to(torch_dtype)
         model.config.torch_dtype = torch_dtype
+
+    # print model parameter stats
+    print(get_parameter_stats_repr(model), flush=True)
 
     return model
 

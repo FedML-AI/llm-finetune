@@ -1,8 +1,9 @@
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import warnings
 
 import numpy as np
+from torch.nn import Module
 from transformers import AutoConfig, AutoModelForCausalLM, DataCollatorForLanguageModeling
 from transformers.dynamic_module_utils import get_class_from_dynamic_module, resolve_trust_remote_code
 from transformers.models.auto.auto_factory import _BaseAutoModelClass, _get_model_class
@@ -161,6 +162,50 @@ def get_vocab_size(model_or_config: Union[str, ModelConfigType, ModelType], **kw
         raise TypeError(f"\"{type(model_or_config)}\" is not a supported model_or_config type.")
 
     return getattr(config, "vocab_size", None)
+
+
+def get_parameter_stats(model: Module) -> Tuple[int, int, int, int]:
+    trainable_params = 0
+    all_param = 0
+    base_model_params = 0  # base model parameter
+    adapter_params = 0  # adapter parameter
+    for name, param in model.named_parameters():
+        num_params = param.numel()
+        # if using DS Zero 3 and the weights are initialized empty
+        if num_params == 0 and hasattr(param, "ds_numel"):
+            num_params = param.ds_numel
+
+        # Due to the design of 4bit linear layers from bitsandbytes
+        # one needs to multiply the number of parameters by 2 to get
+        # the correct number of parameters
+        if param.__class__.__name__ == "Params4bit":
+            num_params = num_params * 2
+
+        all_param += num_params
+        if param.requires_grad:
+            trainable_params += num_params
+
+        if any(n in name for n in ("lora_", "ia3_")):
+            adapter_params += num_params
+        else:
+            base_model_params += num_params
+
+    return trainable_params, all_param, base_model_params, adapter_params
+
+
+def get_parameter_stats_repr(model: Module) -> str:
+    trainable_params, all_param, base_model_params, adapter_params = get_parameter_stats(model)
+
+    return (
+        f"trainable params: {trainable_params:,d}"
+        f" || all params: {all_param:,d}"
+        f" || base model params: {base_model_params:,d}"
+        f" || adapter params: {adapter_params:,d}"
+        f"\n || trainable%: {trainable_params / all_param:.4%}"
+        f" || trainable% (adjusted): {trainable_params / (all_param - adapter_params):.4%}"
+        f"\n || comm. size (BF/FP 16): {(trainable_params * 2) / (2 ** 20):,.2f} MiB"
+        f" || comm. size (FP 32): {(trainable_params * 4) / (2 ** 20):,.2f} MiB"
+    )
 
 
 # Adapted from https://github.com/huggingface/transformers/blob/91d7df58b6537d385e90578dac40204cb550f706/src/transformers/models/auto/auto_factory.py#L407

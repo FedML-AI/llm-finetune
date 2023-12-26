@@ -47,10 +47,7 @@ def train() -> None:
         eval_dataset=eval_dataset,
         data_collator=get_data_collator(
             tokenizer,
-            response_template=dataset_args.response_template,
-            # set to `pad_to_multiple_of` to max_seq_length so that all distributed processes share the same
-            # sequence length. This is required for computing metrics.
-            pad_to_multiple_of=dataset_args.max_seq_length
+            response_template=dataset_args.response_template
         )
     )
 

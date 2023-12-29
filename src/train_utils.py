@@ -7,19 +7,19 @@ from peft import get_peft_model
 import torch
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
-from src.configurations import DatasetArguments, ModelArguments
-from src.constants import DEFAULT_MAX_SEQ_LENGTH
-from src.dataset_utils import get_keyword_replacer, get_prompt_formatter
-from src.integrations import is_deepspeed_zero3_enabled
-from src.modeling_utils import (
+from .configurations import DatasetArguments, ModelArguments
+from .constants import DEFAULT_MAX_SEQ_LENGTH
+from .dataset_utils import get_keyword_replacer, get_prompt_formatter
+from .integrations import is_deepspeed_zero3_enabled
+from .modeling_utils import (
     get_max_seq_length as _get_max_seq_length,
     get_model_class_from_config,
     get_parameter_stats_repr,
     get_vocab_size,
 )
-from src.models import add_flash_attention
-from src.typing import DatasetType, ModelConfigType, ModelType, TokenizerType
-from src.utils import replace_if_exists
+from .models import add_flash_attention
+from .typing import DatasetType, ModelConfigType, ModelType, TokenizerType
+from .utils import replace_if_exists
 
 
 def preprocess_dataset(

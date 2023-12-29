@@ -6,13 +6,13 @@ from timeit import default_timer as timer
 from src.configurations import DatasetArguments, ExperimentArguments, ModelArguments
 from src.hf_trainer import HFTrainer
 from src.modeling_utils import get_data_collator
-from src.utils import parse_hf_args, save_config
-from train_utils import (
+from src.train_utils import (
     get_dataset,
     get_max_seq_length,
     get_model,
     get_tokenizer,
 )
+from src.utils import parse_hf_args, save_config
 
 
 def train() -> None:
@@ -47,10 +47,7 @@ def train() -> None:
         eval_dataset=eval_dataset,
         data_collator=get_data_collator(
             tokenizer,
-            response_template=dataset_args.response_template,
-            # set to `pad_to_multiple_of` to max_seq_length so that all distributed processes share the same
-            # sequence length. This is required for computing metrics.
-            pad_to_multiple_of=dataset_args.max_seq_length
+            response_template=dataset_args.response_template
         )
     )
 
